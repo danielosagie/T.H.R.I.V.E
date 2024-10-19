@@ -61,14 +61,16 @@ app = Flask(__name__)
 # Configure CORS
 if os.environ.get('FLASK_ENV') == 'production':
     # In production, allow requests from your Vercel domain
-    CORS(app, resources={r"/*": {"origins": ["https://your-frontend-domain.vercel.app", "http://localhost:3000"]}})
+    CORS(app, resources={r"/*": {"origins": ["https://tcard.vercel.app", "http://localhost:3000"]}})
 else:
     # In development, allow requests from the local frontend
     CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
 @app.after_request
 def after_request(response):
-    if os.environ.get('FLASK_ENV') != 'production':
+    if os.environ.get('FLASK_ENV') == 'production':
+        response.headers.add('Access-Control-Allow-Origin', 'https://tcard.vercel.app')
+    else:
         response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')

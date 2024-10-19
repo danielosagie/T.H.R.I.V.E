@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import Link from 'next/link'
-//import axios from 'axios'
+import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import { generatePersona } from '../lib/api'
 
@@ -129,12 +129,13 @@ export function ExperienceCardBuilderComponent() {
   const handleGenerateCard = async () => {
     setIsLoading(true)
     try {
-      const personaData = await generatePersona(formData)
-      localStorage.setItem('generatedPersona', JSON.stringify(personaData))
-      router.push('/view-persona')
+      const response = await axios.post('https://tcard-vercel.onrender.com/generate_persona_stream', formData)
+      const generatedPersona = response.data
+      localStorage.setItem('generatedPersona', JSON.stringify(generatedPersona))
+      router.push('/view')
     } catch (error) {
       console.error('Error generating persona:', error)
-      // Handle error (e.g., show error message to user)
+      // Handle error (e.g., show an error message to the user)
     } finally {
       setIsLoading(false)
     }

@@ -33,7 +33,7 @@ export default function ViewPageClient() {
           const parsedPersona = JSON.parse(generatedPersona)
           setCards([parsedPersona])
           setSelectedCardId(parsedPersona.id)
-          localStorage.removeItem('generatedPersona')
+          localStorage.removeItem('generatedPersona') // Clear after use
         } else {
           const response = await axios.get('https://tcard-vercel.onrender.com/get_all_personas')
           setCards(response.data)
@@ -85,4 +85,3 @@ export default function ViewPageClient() {
     </div>
   )
 }
-
