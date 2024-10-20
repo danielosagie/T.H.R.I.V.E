@@ -59,12 +59,7 @@ agent = loop.run_until_complete(Agent.create("MainAgent", OLLAMA_BASE_URL, MODEL
 app = Flask(__name__)
 
 # Configure CORS
-if os.environ.get('FLASK_ENV') == 'production':
-    # In production, allow requests from your Vercel domain
-    CORS(app, resources={r"/*": {"origins": ["https://tcard.vercel.app", "http://localhost:3000"]}})
-else:
-    # In development, allow requests from the local frontend
-    CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+CORS(app, resources={r"/*": {"origins": ["https://tcard.vercel.app", "http://localhost:3000"]}})
 
 @app.after_request
 def after_request(response):
@@ -101,9 +96,9 @@ def generate_persona_stream():
     realism = float(generation_settings.get('realism', 0.5))
     custom_prompt = generation_settings.get('default_prompt', '')
     
-    system_prompt = """You are an AI assistant specializing in creating tailored professional profile cards. Generate a profile card based on the provided information about the job seeker, you will not respond in any other way than the format outlined below seperated by commas for each quality you extract and imagine. Use the given data to create a complete profile, being creative in extracting relevant skills and traits. Structure the card using the following format:
+    system_prompt = """You are an Employment Readiness Professional Counselor and Mental Therapist. You are helping clients who have had difficult and detailed life experiences and are struggling to find a job. You are helping them to create a profile card of themselves to see the value they bring, meaning we want to extract the most relevant skills and traits and also show them the underlying traits they gained/have from their experiences and what they will need in order to get to their goals and will help them to find a job. Generate a profile card based on the provided information about the job seeker, you will not respond in any other way than the format outlined below seperated by commas for each quality you extract and imagine. Use the given data to create a complete profile, being creative in extracting relevant skills and traits. Structure the card using the following format:
 - Name: [Full Name]
-- Summary: [A creative and insightful 2-3 sentence summary of the person's profile, highlighting their unique qualities and potential. Do not use the word "profile" in the summary, and do not just state what was provided in the input text, think of the bigger picture and their goals and how they want/need to percieve themselves]
+- Summary: [A creative and insightful 2-3 sentence summary of the person's profile, highlighting their unique qualities and potential. Do not use the word "profile" or their name in the summary, and do not just state what was provided in the input text, think of the bigger picture and their goals and how they want/need to percieve themselves. For example, if they are a teacher, do not just say "teacher", but rather say something like "a teacher who is passionate about education and helping others learn"]
 </PersonalInfo>
 <QualificationsAndEducation>
 - [Most relevant qualification]

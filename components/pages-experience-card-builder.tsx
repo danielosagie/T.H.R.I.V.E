@@ -16,6 +16,9 @@ import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import { generatePersona } from '../lib/api'
 
+const BACKEND_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://tcard-vercel.onrender.com' 
+  : 'http://localhost:5000';
 
 const steps = [
   { title: "Introduction", description: "Getting to know you" },
@@ -142,7 +145,7 @@ export function ExperienceCardBuilderComponent() {
         }
       }
       console.log("Form data being sent:", Object.fromEntries(formDataToSend))
-      const response = await axios.post('https://tcard-vercel.onrender.com/generate_persona_stream', formDataToSend)
+      const response = await axios.post(`${BACKEND_URL}/generate_persona_stream`, formDataToSend)
       console.log("Response received:", response.data)
       const generatedPersona = response.data.persona
       localStorage.setItem('generatedPersona', JSON.stringify(generatedPersona))
