@@ -12,7 +12,7 @@ const Hero = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8 items-center">
             <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
-              Decode Your Past, Design Your Future
+              Decode Your Past,<br /> Design Your Future
             </h1>
             <p className="text-lg leading-8 text-muted-foreground">
             AI-powered tool assisting military spouses to self-reflect and translate their unique experiences and skills for career growth  
