@@ -78,8 +78,53 @@ personas = {}
 
 @app.route('/generate_persona_stream', methods=['POST'])
 def generate_persona_stream():
+    data = request.form.to_dict(flat=False)
+    prompt = f"""
+    Name: {data['firstName'][0]} {data['lastName'][0]}
+    Age Range: {data['ageRange'][0]}
+    Career Journey: {', '.join(data['careerJourney[]'])}
+    Other Career Journey: {data['otherCareerJourney'][0]}
+    Career Goals: {data['careerGoals'][0]}
+    Education: {data['education'][0]}
+    Field of Study: {', '.join(data['fieldOfStudy[]'])}
+    Other Field of Study: {data['otherFieldOfStudy'][0]}
+    Additional Training: {data['additionalTraining'][0]}
+    Technical Skills: {data['technicalSkills'][0]}
+    Creative Skills: {data['creativeSkills'][0]}
+    Other Skills: {data['otherSkills'][0]}
+    Work Experiences: {data['workExperiences'][0]}
+    Volunteer Experiences: {data['volunteerExperiences'][0]}
+    Military Life Experiences: {data['militaryLifeExperiences'][0]}
+    Transportation: {data['transportation'][0]}
+    Drive Distance: {data['driveDistance'][0]}
+    Military Base: {data['militaryBase'][0]}
+    Childcare: {data['childcare'][0]}
+    Childcare Cost: {data['childcareCost'][0]}
+    Childcare Distance: {data['childcareDistance'][0]}
+    Relocation: {data['relocation'][0]}
+    Work Preference: {data['workPreference'][0]}
+    Work Schedule: {data['workSchedule'][0]}
+    Work Hours: {data['workHours'][0]}
+    Regular Commitments: {data['regularCommitments'][0]}
+    Stress Management: {data['stressManagement'][0]}
+    Additional Information: {data['additionalInformation'][0]}
+    Stay Duration: {data['stayDuration'][0]}
+
+    Based on the information above, generate a detailed persona profile with the following sections:
+    - Name
+    - Summary
+    - QualificationsAndEducation
+    - Skills
+    - Goals
+    - Strengths
+    - LifeExperiences
+    - ValueProposition
+    - NextSteps
+
+    For each section, provide detailed and insightful information based on the given data.
+    """
+
     app.logger.info("Received request for generate_persona_stream")
-    data = request.form
     app.logger.info(f"Received data: {data}")
     
     # Construct the input text from the received data
@@ -207,44 +252,17 @@ Create a professional profile card for a job seeker using the following informat
 
 def parse_generated_persona(generated_text):
     try:
-        sections = re.split(r'<(\w+)>', generated_text)
+        sections = re.split(r'- (\w+):', generated_text)
         parsed_data = {}
         current_section = None
         
         for item in sections:
-            if item in ['PersonalInfo', 'QualificationsAndEducation', 'Skills', 'Goals', 'Strengths', 'LifeExperiences', 'ValueProposition', 'NextSteps']:
+            if item in ['Name', 'Summary', 'QualificationsAndEducation', 'Skills', 'Goals', 'Strengths', 'LifeExperiences', 'ValueProposition', 'NextSteps']:
                 current_section = item.lower()
                 parsed_data[current_section] = []
             elif current_section:
-                lines = [line.strip().lstrip('- ') for line in item.strip().split('\n') if line.strip()]
-                for line in lines:
-                    parts = [part.strip() for part in line.split(',', 2)]
-                    if len(parts) == 3:
-                        parsed_data[current_section].append({
-                            'main': parts[0],
-                            'detail1': parts[1],
-                            'detail2': parts[2]
-                        })
-                    elif len(parts) == 2:
-                        parsed_data[current_section].append({
-                            'main': parts[0],
-                            'detail1': parts[1]
-                        })
-                    else:
-                        parsed_data[current_section].append({'main': line})
-        
-        if 'personalinfo' in parsed_data:
-            for item in parsed_data['personalinfo']:
-                if item['main'].startswith('Name:'):
-                    parsed_data['name'] = item['main'].split(':', 1)[1].strip()
-                elif item['main'].startswith('Summary:'):
-                    parsed_data['summary'] = item['main'].split(':', 1)[1].strip()
-            del parsed_data['personalinfo']
-        
-        required_keys = ['name', 'summary', 'goals', 'nextsteps', 'lifeexperiences', 'qualificationsandeducation', 'skills', 'strengths', 'valueproposition']
-        for key in required_keys:
-            if key not in parsed_data:
-                parsed_data[key] = []
+                items = [line.strip().lstrip('* ') for line in item.strip().split('\n') if line.strip()]
+                parsed_data[current_section].extend(items)
         
         return parsed_data
     except Exception as e:
