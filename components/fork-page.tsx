@@ -8,7 +8,7 @@ const ForkPage = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <header className="flex items-center mb-8">
-        <Image src="/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
+        <Image src="/public/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
         <h1 className="text-2xl font-bold">THRIVE Toolkit</h1>
       </header>
 
@@ -21,7 +21,7 @@ const ForkPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <Card>
           <CardContent className="p-6">
-            <Image src="/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
+            <Image src="/public/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
             <h3 className="text-xl font-bold mb-2">New Job Seeker/Career Transitioner</h3>
             <p className="text-sm text-green-600 mb-4">&quot;I&apos;m just starting out and exploring my career options&quot; ⭕</p>
             <p className="mb-4">

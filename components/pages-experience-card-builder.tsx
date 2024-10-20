@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -99,7 +100,7 @@ const initialFormData: FormData = {
 export function ExperienceCardBuilderComponent() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0)
-  const [formData, setFormData] = useState<FormData>(initialFormData as FormData)
+  const [formData, setFormData] = useLocalStorage<FormData>('experienceCardFormData', initialFormData)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
@@ -109,16 +110,19 @@ export function ExperienceCardBuilderComponent() {
   }, [formData])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prevData: FormData) => ({
+      ...prevData,
+      [name]: value
+    }));
+  };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData((prev: FormData) => ({ ...prev, [name]: value }))
   }
 
   const handleCheckboxChange = (name: string, value: string, checked: boolean) => {
-    setFormData(prev => ({
+    setFormData((prev: FormData) => ({
       ...prev,
       [name]: checked
         ? [...((prev[name] as string[]) || []), value]
@@ -129,13 +133,24 @@ export function ExperienceCardBuilderComponent() {
   const handleGenerateCard = async () => {
     setIsLoading(true)
     try {
-      const response = await axios.post('https://tcard-vercel.onrender.com/generate_persona_stream', formData)
-      const generatedPersona = response.data
+      const formDataToSend = new FormData()
+      for (const [key, value] of Object.entries(formData)) {
+        if (Array.isArray(value)) {
+          value.forEach(item => formDataToSend.append(`${key}[]`, item))
+        } else {
+          formDataToSend.append(key, value as string)
+        }
+      }
+      console.log("Form data being sent:", Object.fromEntries(formDataToSend))
+      const response = await axios.post('https://tcard-vercel.onrender.com/generate_persona_stream', formDataToSend)
+      console.log("Response received:", response.data)
+      const generatedPersona = response.data.persona
       localStorage.setItem('generatedPersona', JSON.stringify(generatedPersona))
       router.push('/view')
+      localStorage.setItem('lastFormData', JSON.stringify(formData));
     } catch (error) {
       console.error('Error generating persona:', error)
-      // Handle error (e.g., show an error message to the user)
+      // Show an error message to the user
     } finally {
       setIsLoading(false)
     }
@@ -534,7 +549,7 @@ export function ExperienceCardBuilderComponent() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <Link href="/" className="flex items-center">
-              <Image src="/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
+              <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
               <h1 className="text-xl font-bold">THRIVE Toolkit</h1>
             </Link>
             <h2 className="text-2xl font-bold">Building Your Experience Card</h2>

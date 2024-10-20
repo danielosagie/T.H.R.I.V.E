@@ -2,11 +2,14 @@
 //import { Button } from "@/components/ui/button"
 import Hero from "@/components/ui/hero"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
+import { Footer } from '@/components/footer'
+import { HomeHeader } from '@/components/HomeHeader'
 
 const HomePage = () => {
   return (
-    <div className="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8">
-      <main className="flex-1">
+    <div className="min-h-screen flex flex-col">
+      <HomeHeader />
+      <main className="flex-grow container mx-auto px-4 py-8">
         <Hero />
         <div className="container mx-auto px-4 py-5">
           <h2 className="text-3xl font-bold mb-6">Featured Articles</h2>
@@ -41,6 +44,7 @@ const HomePage = () => {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 };

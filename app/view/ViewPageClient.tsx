@@ -6,37 +6,128 @@ import { Button } from "@/components/ui/button"
 import { Footer } from "@/components/footer"
 import { ExperienceCard } from "@/components/experience-card"
 import axios from 'axios'
+import { format as formatDate } from 'date-fns'
+import { PersonaSelector } from "@/components/persona-selector"
+import { PersonaData } from '@/types/types'
 
-interface PersonaData {
-  id: string
-  name: string
-  summary: string
-  goals: string[]
-  nextSteps: string[]
-  lifeExperiences: string[]
-  qualificationsAndEducation: string[]
-  skills: string[]
-  strengths: string[]
-  valueProposition: string[]
-}
+const transformPersonaData = (parsedPersona: any): PersonaData => {
+  if (typeof parsedPersona === 'object' && !Array.isArray(parsedPersona)) {
+    // Handle the API response format
+    return {
+      id: parsedPersona.persona_id || String(Date.now()),
+      name: `${parsedPersona.firstName} ${parsedPersona.lastName}`,
+      summary: parsedPersona.careerJourney || '',
+      qualificationsAndEducation: [
+        parsedPersona.education,
+        parsedPersona.additionalTraining
+      ].filter(Boolean),
+      skills: [
+        parsedPersona.technicalSkills,
+        parsedPersona.creativeSkills,
+        parsedPersona.otherSkills
+      ].filter(Boolean),
+      goals: [parsedPersona.careerGoals].filter(Boolean),
+      strengths: [], // Not provided in the current format
+      lifeExperiences: [
+        parsedPersona.workExperiences,
+        parsedPersona.volunteerExperiences,
+        parsedPersona.militaryLifeExperiences
+      ].filter(Boolean),
+      valueProposition: [], // Not provided in the current format
+      nextSteps: [], // Not provided in the current format
+      timestamp: parsedPersona.timestamp || Date.now() // Add this line
+    };
+  } else if (typeof parsedPersona === 'string') {
+    // Handle the string format (if still needed)
+    const sections = parsedPersona.split('\n\n')
+    const extractSection = (title: string) => {
+      const section = sections.find(s => s.startsWith(`**${title}:**`))
+      return section ? section.replace(`**${title}:**`, '').trim() : ''
+    }
+    const extractList = (title: string) => {
+      const section = extractSection(title)
+      return section ? section.split('\n').map(item => item.trim().replace(/^[-•]\s*/, '')) : []
+    }
+
+    return {
+      id: String(Date.now()),
+      name: extractSection('Name'),
+      summary: extractSection('Career Journey'),
+      qualificationsAndEducation: [
+        ...extractList('Education'),
+        ...extractList('Additional Training'),
+        ...extractList('Field of Study')
+      ],
+      skills: [
+        ...extractList('Technical Skills'),
+        ...extractList('Creative Skills'),
+        ...extractList('Other Skills')
+      ],
+      goals: extractList('Career Goals'),
+      strengths: [], // Infer strengths from other sections if possible
+      lifeExperiences: [
+        ...extractList('Work Experiences'),
+        ...extractList('Volunteer Experiences'),
+        ...extractList('Military Life Experiences')
+      ],
+      valueProposition: [], // Infer value proposition from other sections if possible
+      nextSteps: [], // Infer next steps from career goals if possible
+      timestamp: Date.now() // Add this line
+    }
+  } else {
+    // Handle unexpected format
+    console.error('Unexpected persona format:', parsedPersona);
+    return {
+      id: String(Date.now()),
+      name: 'Unknown',
+      summary: '',
+      qualificationsAndEducation: [],
+      skills: [],
+      goals: [],
+      strengths: [],
+      lifeExperiences: [],
+      valueProposition: [],
+      nextSteps: [],
+      timestamp: Date.now() // Add this line
+    };
+  }
+};
 
 export default function ViewPageClient() {
   const [cards, setCards] = useState<PersonaData[]>([])
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [format, setFormat] = useState<'card' | 'bullet'>('card')
+  const [selectedPersona, setSelectedPersona] = useState<PersonaData | undefined>(undefined)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const generatedPersona = localStorage.getItem('generatedPersona')
+        console.log('Generated Persona from localStorage:', generatedPersona)
         if (generatedPersona) {
-          const parsedPersona = JSON.parse(generatedPersona)
-          setCards([parsedPersona])
-          setSelectedCardId(parsedPersona.id)
+          try {
+            const parsedPersona = JSON.parse(generatedPersona)
+            console.log('Parsed Persona:', parsedPersona)
+            const transformedPersona = transformPersonaData(parsedPersona)
+            console.log('Transformed Persona:', transformedPersona)
+            setCards([transformedPersona])
+            setSelectedCardId(transformedPersona.id)
+            setSelectedPersona(transformedPersona)
+          } catch (parseError) {
+            console.error('Error parsing persona:', parseError)
+            setError('Failed to parse generated persona. Please try again.')
+          }
           localStorage.removeItem('generatedPersona') // Clear after use
         } else {
+          console.log('No generated persona in localStorage, fetching from API')
           const response = await axios.get('https://tcard-vercel.onrender.com/get_all_personas')
-          setCards(response.data)
+          console.log('API Response:', response.data)
+          const transformedCards = response.data.map(transformPersonaData)
+          setCards(transformedCards)
+          if (transformedCards.length > 0) {
+            setSelectedCardId(transformedCards[0].id)
+          }
         }
       } catch (err) {
         console.error('Error fetching cards:', err)
@@ -51,8 +142,13 @@ export default function ViewPageClient() {
     setSelectedCardId(id)
   }
 
+  const handlePersonaSelect = (persona: PersonaData) => {
+    setSelectedPersona(persona)
+    setSelectedCardId(persona.id)
+  }
+
   if (error) {
-    return <div>{error}</div>
+    return <div className="text-red-500 text-center mt-8">{error}</div>
   }
 
   return (
@@ -61,12 +157,17 @@ export default function ViewPageClient() {
         {selectedCardId === null ? (
           <>
             <h1 className="text-3xl font-bold mb-6">Your Experience Cards</h1>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {cards.map((card) => (
-                <div key={card.id} className="p-4 border rounded">
-                  <h2 className="text-xl font-semibold">{card.name || `Experience Card ${card.id}`}</h2>
-                  <p className="text-gray-600 mt-2">{card.summary}</p>
-                  <Button className="mt-2" onClick={() => handleCardSelect(card.id)}>View Details</Button>
+                <div key={card.id} className="p-4 border rounded flex flex-col h-full">
+                  <h2 className="text-xl font-semibold mb-2">{card.name || `Experience Card ${card.id}`}</h2>
+                  <p className="text-gray-600 mb-4 flex-grow">{card.summary}</p>
+                  <div className="flex flex-col items-center">
+                    <Button className="mb-2 w-full" onClick={() => handleCardSelect(card.id)}>View Details</Button>
+                    <p className="text-xs text-gray-400">
+                      {formatDate(new Date(card.timestamp), 'MMM d, yyyy HH:mm')}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -75,10 +176,13 @@ export default function ViewPageClient() {
             </Link>
           </>
         ) : (
-          <>
-            <Button className="mb-4" variant="outline" onClick={() => setSelectedCardId(null)}>Back to Cards</Button>
-            <ExperienceCard initialData={cards.find(card => card.id === selectedCardId)} />
-          </>
+          <ExperienceCard 
+            initialData={cards.find(card => card.id === selectedCardId)} 
+            persona={selectedPersona}
+            format={format} 
+            onPersonaSelect={handlePersonaSelect}
+            onBackToCards={() => setSelectedCardId(null)}
+          />
         )}
       </main>
       <Footer />

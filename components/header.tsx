@@ -4,23 +4,33 @@ import React from 'react'
 import Link from 'next/link'
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DownloadIcon } from 'lucide-react'
+import { DownloadIcon, ArrowLeftIcon } from 'lucide-react'
 import Image from 'next/image'
+import { PersonaSelector } from './persona-selector'
+import { PersonaData } from '@/types/types'  // Adjust the import path as necessary
 
 interface HeaderProps {
   mode: 'edit' | 'view'
   onModeChange: (mode: 'edit' | 'view') => void
   lastAutoSave: string
   onExport: () => void
+  onPersonaSelect: (persona: PersonaData) => void
+  onBackToCards: () => void
 }
 
-export function Header({ mode, onModeChange, lastAutoSave, onExport }: HeaderProps) {
+export function Header({ 
+  mode, 
+  onModeChange, 
+  lastAutoSave, 
+  onExport,
+  onPersonaSelect,
+  onBackToCards
+}: HeaderProps) {
   return (
     <div className="space-y-4 pb-4 border-b border-gray-300">
       <div className="flex justify-between items-center">
         <Link href="/" className="flex items-center space-x-2">
-          <Image src="/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
+          <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
           <span className="font-semibold">THRIVE Toolkit</span>
         </Link>
         <h1 className="text-2xl font-bold">Experience Card</h1>
@@ -35,14 +45,11 @@ export function Header({ mode, onModeChange, lastAutoSave, onExport }: HeaderPro
         </Tabs>
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-500">Last autosave at {lastAutoSave}</span>
-          <Select defaultValue="alice_vuong_v3">
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select version" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alice_vuong_v3">alice_vuong_v3</SelectItem>
-            </SelectContent>
-          </Select>
+          <PersonaSelector onPersonaSelect={onPersonaSelect} />
+          <Button variant="outline" onClick={onBackToCards}>
+            <ArrowLeftIcon className="mr-2 h-4 w-4" />
+            Back to Cards
+          </Button>
           <Button variant="outline" onClick={onExport}>
             <DownloadIcon className="mr-2 h-4 w-4" />
             Export

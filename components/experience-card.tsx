@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { PlusIcon, XIcon } from 'lucide-react'
+import { PersonaData } from '@/types/types'  // Adjust the import path as necessary
 
 interface ExperienceCardData {
+  id?: string
   name: string
   summary: string
   goals: string[]
@@ -38,16 +40,35 @@ const emptyData: ExperienceCardData = {
 const API_URL = 'https://tcard-vercel.onrender.com'
 
 interface ExperienceCardProps {
-  initialData?: ExperienceCardData
+  initialData?: PersonaData
+  persona?: PersonaData
+  format?: 'card' | 'bullet'
+  onPersonaSelect: (persona: PersonaData) => void
+  onBackToCards: () => void
 }
 
-export function ExperienceCard({ initialData }: ExperienceCardProps) {
+export function ExperienceCard({ initialData, persona, format = 'card', onPersonaSelect, onBackToCards }: ExperienceCardProps) {
   const [mode, setMode] = useState<'edit' | 'view'>('view')
-  const [format, setFormat] = useState<'card' | 'bullet'>('card')
+  const [cardFormat, setCardFormat] = useState<'card' | 'bullet'>(format)
   const [lastAutoSave, setLastAutoSave] = useState<string | null>(null)
-  const [data, setData] = useState<ExperienceCardData>(initialData || emptyData)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<ExperienceCardData>(persona || initialData || emptyData)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedPersona, setSelectedPersona] = useState<PersonaData | null>(null)
+
+  useEffect(() => {
+    if (persona) {
+      setData(persona)
+    } else if (initialData) {
+      setData(initialData)
+    } else {
+      setData(emptyData)
+    }
+  }, [persona, initialData])
+
+  useEffect(() => {
+    setCardFormat(format)
+  }, [format])
 
   useEffect(() => {
     if (!initialData) {
@@ -104,7 +125,7 @@ export function ExperienceCard({ initialData }: ExperienceCardProps) {
   }
 
   const handleFormatChange = (newFormat: 'card' | 'bullet') => {
-    setFormat(newFormat)
+    setCardFormat(newFormat)
   }
 
   const handleExport = () => {
@@ -141,6 +162,11 @@ export function ExperienceCard({ initialData }: ExperienceCardProps) {
     }))
   }
 
+  const handlePersonaSelect = (persona: PersonaData) => {
+    setSelectedPersona(persona)
+    setData(persona)
+  }
+
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>
   }
@@ -153,7 +179,15 @@ export function ExperienceCard({ initialData }: ExperienceCardProps) {
     <Section title={title}>
       {Array.isArray(content) ? (
         content.length > 0 ? (
-          content.map((item, index) => <Tag key={index}>{item}</Tag>)
+          cardFormat === 'card' ? (
+            content.map((item, index) => <Tag key={index}>{item}</Tag>)
+          ) : (
+            <ul className="list-disc list-inside">
+              {content.map((item, index) => (
+                <li key={index} className="text-neutral-300">{item}</li>
+              ))}
+            </ul>
+          )
         ) : (
           <p className="text-neutral-400">{`Your ${typeof title === 'string' ? title.toLowerCase() : 'content'} will appear here.`}</p>
         )
@@ -219,35 +253,46 @@ export function ExperienceCard({ initialData }: ExperienceCardProps) {
     if (mode === 'view') {
       return (
         <>
-          <div>
-            {renderViewSection(data.name || "Your Name", data.summary)}
-            {renderViewSection("Goals", data.goals || [])}
-            {renderViewSection("Next Steps", data.nextSteps || [])}
-            {renderViewSection("Life Experiences", data.lifeExperiences || [])}
+          <div className={cardFormat === 'bullet' ? 'col-span-2' : ''}>
+            {renderViewSection("Name", data.name)}
+            {renderViewSection("Summary", data.summary)}
+            {renderViewSection("Goals", data.goals)}
+            {renderViewSection("Next Steps", data.nextSteps)}
+            {renderViewSection("Life Experiences", data.lifeExperiences)}
           </div>
-          <div>
-            {renderViewSection("Qualifications and Education", data.qualificationsAndEducation || [])}
-            {renderViewSection("Skills", data.skills || [])}
-            {renderViewSection("Strengths", data.strengths || [])}
-            {renderViewSection("Value Proposition", data.valueProposition || [])}
-          </div>
+          {cardFormat === 'card' && (
+            <div>
+              {renderViewSection("Qualifications and Education", data.qualificationsAndEducation)}
+              {renderViewSection("Skills", data.skills)}
+              {renderViewSection("Strengths", data.strengths)}
+              {renderViewSection("Value Proposition", data.valueProposition)}
+            </div>
+          )}
+          {cardFormat === 'bullet' && (
+            <>
+              {renderViewSection("Qualifications and Education", data.qualificationsAndEducation)}
+              {renderViewSection("Skills", data.skills)}
+              {renderViewSection("Strengths", data.strengths)}
+              {renderViewSection("Value Proposition", data.valueProposition)}
+            </>
+          )}
         </>
       )
-    } else if (mode === 'edit' && format === 'card') {
+    } else if (mode === 'edit' && cardFormat === 'card') {
       return (
         <>
           <div>
             {renderEditCardSection("Name", "name", data.name)}
             {renderEditCardSection("Summary", "summary", data.summary)}
-            {renderEditCardSection("Goals", "goals", data.goals || [])}
-            {renderEditCardSection("Next Steps", "nextSteps", data.nextSteps || [])}
-            {renderEditCardSection("Life Experiences", "lifeExperiences", data.lifeExperiences || [])}
+            {renderEditCardSection("Goals", "goals", data.goals)}
+            {renderEditCardSection("Next Steps", "nextSteps", data.nextSteps)}
+            {renderEditCardSection("Life Experiences", "lifeExperiences", data.lifeExperiences)}
           </div>
           <div>
-            {renderEditCardSection("Qualifications and Education", "qualificationsAndEducation", data.qualificationsAndEducation || [])}
-            {renderEditCardSection("Skills", "skills", data.skills || [])}
-            {renderEditCardSection("Strengths", "strengths", data.strengths || [])}
-            {renderEditCardSection("Value Proposition", "valueProposition", data.valueProposition || [])}
+            {renderEditCardSection("Qualifications and Education", "qualificationsAndEducation", data.qualificationsAndEducation)}
+            {renderEditCardSection("Skills", "skills", data.skills)}
+            {renderEditCardSection("Strengths", "strengths", data.strengths)}
+            {renderEditCardSection("Value Proposition", "valueProposition", data.valueProposition)}
           </div>
         </>
       )
@@ -256,13 +301,13 @@ export function ExperienceCard({ initialData }: ExperienceCardProps) {
         <div className="col-span-2">
           {renderEditBulletSection("Name", "name", data.name)}
           {renderEditBulletSection("Summary", "summary", data.summary)}
-          {renderEditBulletSection("Goals", "goals", data.goals || [])}
-          {renderEditBulletSection("Next Steps", "nextSteps", data.nextSteps || [])}
-          {renderEditBulletSection("Life Experiences", "lifeExperiences", data.lifeExperiences || [])}
-          {renderEditBulletSection("Qualifications and Education", "qualificationsAndEducation", data.qualificationsAndEducation || [])}
-          {renderEditBulletSection("Skills", "skills", data.skills || [])}
-          {renderEditBulletSection("Strengths", "strengths", data.strengths || [])}
-          {renderEditBulletSection("Value Proposition", "valueProposition", data.valueProposition || [])}
+          {renderEditBulletSection("Goals", "goals", data.goals)}
+          {renderEditBulletSection("Next Steps", "nextSteps", data.nextSteps)}
+          {renderEditBulletSection("Life Experiences", "lifeExperiences", data.lifeExperiences)}
+          {renderEditBulletSection("Qualifications and Education", "qualificationsAndEducation", data.qualificationsAndEducation)}
+          {renderEditBulletSection("Skills", "skills", data.skills)}
+          {renderEditBulletSection("Strengths", "strengths", data.strengths)}
+          {renderEditBulletSection("Value Proposition", "valueProposition", data.valueProposition)}
         </div>
       )
     }
@@ -275,13 +320,18 @@ export function ExperienceCard({ initialData }: ExperienceCardProps) {
         onModeChange={handleModeChange}
         lastAutoSave={lastAutoSave || ''}
         onExport={handleExport}
+        onPersonaSelect={onPersonaSelect}
+        onBackToCards={onBackToCards}
       />
       <ControlBar
-        format={format}
-        onFormatChange={handleFormatChange}
+        format={cardFormat}
+        onFormatChange={(newFormat) => {
+          setCardFormat(newFormat)
+          handleFormatChange(newFormat)
+        }}
       />
       <div className="bg-neutral-900 p-6 rounded-lg shadow">
-        <div className={`grid ${format === 'card' || mode === 'view' ? 'grid-cols-2' : 'grid-cols-1'} gap-6`}>
+        <div className={`grid ${cardFormat === 'card' || mode === 'edit' ? 'grid-cols-2' : 'grid-cols-1'} gap-6`}>
           {renderContent()}
         </div>
       </div>

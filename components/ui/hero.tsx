@@ -15,13 +15,15 @@ const Hero = () => {
               Decode Your Past, Design Your Future
             </h1>
             <p className="text-lg leading-8 text-muted-foreground">
-              An AI-powered career profile generator for military spouses
+            AI-powered tool assisting military spouses to self-reflect and translate their unique experiences and skills for career growth  
             </p>
             <div className="flex items-center gap-x-6">
               <Link href="/input" passHref>
-                <Button size="lg">Start Your Journey</Button>
+                <Button size="lg">Create New</Button>
               </Link>
-              <Button variant="outline" size="lg">Learn more</Button>
+              <Link href="/view" passHref>
+                <Button variant="outline" size="lg">Continue Editing</Button>
+              </Link>
             </div>
           </div>
           <div className="relative bg-muted rounded-lg overflow-hidden">

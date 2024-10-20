@@ -1,9 +1,12 @@
 "use client"
 
-import { ExperienceCardBuilderComponent } from '@/components/pages-experience-card-builder'
+import dynamic from 'next/dynamic'
 
-export default function ExperienceCardBuilderPage() {
-  return (
-    <ExperienceCardBuilderComponent />
-  )
+const ExperienceCardBuilderComponent = dynamic(
+  () => import('@/components/pages-experience-card-builder').then((mod) => mod.ExperienceCardBuilderComponent),
+  { ssr: false }
+)
+
+export default function InputPage() {
+  return <ExperienceCardBuilderComponent />
 }
