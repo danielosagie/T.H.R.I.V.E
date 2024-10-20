@@ -15,27 +15,16 @@ const transformPersonaData = (parsedPersona: any): PersonaData => {
     // Handle the API response format
     return {
       id: parsedPersona.persona_id || String(Date.now()),
-      name: `${parsedPersona.firstName} ${parsedPersona.lastName}`,
-      summary: parsedPersona.careerJourney || '',
-      qualificationsAndEducation: [
-        parsedPersona.education,
-        parsedPersona.additionalTraining
-      ].filter(Boolean),
-      skills: [
-        parsedPersona.technicalSkills,
-        parsedPersona.creativeSkills,
-        parsedPersona.otherSkills
-      ].filter(Boolean),
-      goals: [parsedPersona.careerGoals].filter(Boolean),
-      strengths: [], // Not provided in the current format
-      lifeExperiences: [
-        parsedPersona.workExperiences,
-        parsedPersona.volunteerExperiences,
-        parsedPersona.militaryLifeExperiences
-      ].filter(Boolean),
-      valueProposition: [], // Not provided in the current format
-      nextSteps: [], // Not provided in the current format
-      timestamp: parsedPersona.timestamp || Date.now() // Add this line
+      name: parsedPersona.name || `${parsedPersona.firstName} ${parsedPersona.lastName}`,
+      summary: parsedPersona.summary || '',
+      qualificationsAndEducation: transformSection(parsedPersona.qualificationsandeducation),
+      skills: transformSection(parsedPersona.skills),
+      goals: transformSection(parsedPersona.goals),
+      strengths: transformSection(parsedPersona.strengths),
+      lifeExperiences: transformSection(parsedPersona.lifeexperiences),
+      valueProposition: transformSection(parsedPersona.valueproposition),
+      nextSteps: transformSection(parsedPersona.nextsteps),
+      timestamp: parsedPersona.timestamp || Date.now()
     };
   } else if (typeof parsedPersona === 'string') {
     // Handle the string format (if still needed)
@@ -91,6 +80,20 @@ const transformPersonaData = (parsedPersona: any): PersonaData => {
       timestamp: Date.now() // Add this line
     };
   }
+};
+
+const transformSection = (section: any[]): { main: string; detail1?: string; detail2?: string }[] => {
+  if (!Array.isArray(section)) return [];
+  return section.map(item => {
+    if (typeof item === 'object') {
+      return {
+        main: item.main || '',
+        detail1: item.detail1,
+        detail2: item.detail2
+      };
+    }
+    return { main: item };
+  });
 };
 
 export default function ViewPageClient() {

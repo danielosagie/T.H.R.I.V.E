@@ -95,47 +95,56 @@ def generate_persona_stream():
     realism = float(generation_settings.get('realism', 0.5))
     custom_prompt = generation_settings.get('default_prompt', '')
     
-    system_prompt = """You are an Employment Readiness Professional Counselor and Mental Therapist. You are helping clients who have had difficult and detailed life experiences and are struggling to find a job. You are helping them to create a profile card of themselves to see the value they bring, meaning we want to extract the most relevant skills and traits and also show them the underlying traits they gained/have from their experiences and what they will need in order to get to their goals and will help them to find a job. Generate a profile card based on the provided information about the job seeker, you will not respond in any other way than the format outlined below seperated by commas for each quality you extract and imagine. Use the given data to create a complete profile, being creative in extracting relevant skills and traits. Structure the card using the following format:
+    system_prompt = """You are an Employment Readiness Professional Counselor, Mental Therapist, and Behavioral Analyst. Your task is to create a comprehensive profile card for job seekers, extracting and inferring as much valuable information as possible from their experiences and goals. Generate an extensive list of tags for each section, being concise yet insightful. Dig deep like a behavioral therapist would, uncovering hidden strengths, skills, and potential. Use the following format, aiming for at least 10-15 tags per section:
+
 - Name: [Full Name]
-- Summary: [A creative and insightful 2-3 sentence summary of the person's profile, highlighting their unique qualities and potential. Do not use the word "profile" or their name in the summary, and do not just state what was provided in the input text, think of the bigger picture and their goals and how they want/need to percieve themselves. For example, if they are a teacher, do not just say "teacher", but rather say something like "a teacher who is passionate about education and helping others learn. When you generate the other sections try to be as efficient as possible in the length of the tags but be as creative and insightful in crating as many tags as possible to show the full picture of the person and their goals and how they want/need to percieve themselves. A skill like python could have implications for other sections like curiosity for strengths or percerverice, or based on their experiences and how they applied it could have implications for their value proposition. Try to rethink every tag and how they play in the bigger picture of this person and their goals."]
+- Summary: [A creative and insightful 2-3 sentence summary highlighting unique qualities and potential. Avoid using "profile" or their name.]
+
 </PersonalInfo>
 <QualificationsAndEducation>
-- [Most relevant qualification]
-- [Educational background]
-- [Additional certifications]
+- [Relevant qualification/certification], [Key aspect]
+- [Educational background], [Notable achievement/skill gained]
+- [Additional training/course], [Practical application]
+...
 </QualificationsAndEducation>
 <Skills>
-- [Key technical skill]
-- [Transferable skill 1]
-- [Transferable skill 2]
-- [Unique skill]
+- [Technical skill], [Proficiency level], [Practical application]
+- [Soft skill], [Context where developed], [Potential use in target field]
+- [Transferable skill], [Origin], [Relevance to career goals]
+...
 </Skills>
 <Goals>
-- [Primary career goal]
-- [Secondary goal]
-- [Personal development goal]
+- [Career goal], [Motivation behind it], [Potential impact]
+- [Personal development goal], [Relevance to career], [Action plan]
+- [Learning objective], [Expected outcome], [Timeline]
+...
 </Goals>
 <Strengths>
-- [Core strength 1]
-- [Core strength 2]
-- [Unique strength]
+- [Core strength], [Evidence from experiences], [Potential application]
+- [Character trait], [How it manifests], [Value in target career]
+- [Unique strength], [Origin story], [Competitive advantage]
+...
 </Strengths>
 <LifeExperiences>
-- [Most relevant experience]
-- [Character-building experience]
-- [Unique life experience]
+- [Significant experience], [Skills developed], [Lessons learned]
+- [Challenge faced], [How overcome], [Personal growth]
+- [Unique life event], [Impact on worldview], [Relevance to career goals]
+...
 </LifeExperiences>
 <ValueProposition>
-- [Key value 1]
-- [Key value 2]
-- [Unique selling point]
+- [Key value], [Supporting evidence], [Benefit to employer]
+- [Unique selling point], [What sets them apart], [Industry relevance]
+- [Personal mission], [Alignment with career goals], [Potential impact]
+...
 </ValueProposition>
 <NextSteps>
-- [Immediate action item]
-- [Medium-term goal]
-- [Long-term aspiration]
+- [Immediate action item], [Expected outcome], [Timeline]
+- [Medium-term goal], [Steps to achieve], [Potential obstacles]
+- [Long-term aspiration], [Milestones], [Resources needed]
+...
 </NextSteps>
-Be creative and insightful in interpreting the provided information. Draw connections between the job seeker's current experiences and their career goals. Highlight transferable skills and unique strengths that could aid in their career transition. Prioritize qualities that apply well to their goal and are most important for their desired career path"""
+
+Be extremely thorough and creative in extracting and inferring information. Each tag should be concise yet packed with meaning. Draw connections between experiences, skills, and career goals. Highlight unique combinations of skills or experiences that could set the candidate apart."""
 
     input_prompt = f"""
 Create a professional profile card for a job seeker using the following information. Be creative and insightful in extracting relevant skills, traits, and potential connections from their current experiences to their new career goals:
@@ -174,7 +183,7 @@ Create a professional profile card for a job seeker using the following informat
 
         app.logger.info(f"Generated persona: {generated_persona[:500]}...")  # Log first 500 characters
         parsed_data = parse_generated_persona(generated_persona)
-        app.logger.info(f"Parsed data: {parsed_data}")
+        app.logger.info(f"Parsed data: {json.dumps(parsed_data, indent=2)}")
 
         if not parsed_data:
             raise ValueError("Failed to parse generated persona")
@@ -190,7 +199,7 @@ Create a professional profile card for a job seeker using the following informat
         personas[persona_id] = full_persona_data
 
         app.logger.info(f"Persona stored with ID: {persona_id}")
-        return jsonify({'persona': generated_persona, 'persona_id': persona_id})
+        return jsonify({'persona': parsed_data, 'persona_id': persona_id})
 
     except Exception as e:
         app.logger.error(f"Error in generate_persona_stream: {str(e)}")
@@ -198,7 +207,6 @@ Create a professional profile card for a job seeker using the following informat
 
 def parse_generated_persona(generated_text):
     try:
-        # Split the text into sections
         sections = re.split(r'<(\w+)>', generated_text)
         parsed_data = {}
         current_section = None
@@ -208,20 +216,31 @@ def parse_generated_persona(generated_text):
                 current_section = item.lower()
                 parsed_data[current_section] = []
             elif current_section:
-                # Remove bullet points and split by newlines
-                items = [line.strip().lstrip('- ') for line in item.strip().split('\n') if line.strip()]
-                parsed_data[current_section].extend(items)
+                lines = [line.strip().lstrip('- ') for line in item.strip().split('\n') if line.strip()]
+                for line in lines:
+                    parts = [part.strip() for part in line.split(',', 2)]
+                    if len(parts) == 3:
+                        parsed_data[current_section].append({
+                            'main': parts[0],
+                            'detail1': parts[1],
+                            'detail2': parts[2]
+                        })
+                    elif len(parts) == 2:
+                        parsed_data[current_section].append({
+                            'main': parts[0],
+                            'detail1': parts[1]
+                        })
+                    else:
+                        parsed_data[current_section].append({'main': line})
         
-        # Extract name and summary from PersonalInfo
         if 'personalinfo' in parsed_data:
             for item in parsed_data['personalinfo']:
-                if item.startswith('Name:'):
-                    parsed_data['name'] = item.split(':', 1)[1].strip()
-                elif item.startswith('Summary:'):
-                    parsed_data['summary'] = item.split(':', 1)[1].strip()
+                if item['main'].startswith('Name:'):
+                    parsed_data['name'] = item['main'].split(':', 1)[1].strip()
+                elif item['main'].startswith('Summary:'):
+                    parsed_data['summary'] = item['main'].split(':', 1)[1].strip()
             del parsed_data['personalinfo']
         
-        # Ensure all required keys are present
         required_keys = ['name', 'summary', 'goals', 'nextsteps', 'lifeexperiences', 'qualificationsandeducation', 'skills', 'strengths', 'valueproposition']
         for key in required_keys:
             if key not in parsed_data:

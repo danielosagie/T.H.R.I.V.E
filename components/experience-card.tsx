@@ -167,6 +167,22 @@ export function ExperienceCard({ initialData, persona, format = 'card', onPerson
     setData(persona)
   }
 
+  const handleBulletChange = (section: string, index: number, field: 'main' | 'detail1' | 'detail2', value: string) => {
+    setData(prevData => ({
+      ...prevData,
+      [section]: prevData[section].map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
+  const handleAddBullet = (section: string) => {
+    setData(prevData => ({
+      ...prevData,
+      [section]: [...prevData[section], { main: '', detail1: '', detail2: '' }]
+    }));
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>
   }
@@ -239,15 +255,38 @@ export function ExperienceCard({ initialData, persona, format = 'card', onPerson
     </Section>
   )
 
-  const renderEditBulletSection = (title: string, section: keyof ExperienceCardData, content: string | string[]) => (
-    <Section title={title}>
-      <Textarea
-        value={Array.isArray(content) ? content.join('\n') : content}
-        onChange={(e) => handleDataChange(section, e.target.value.split('\n'))}
-        className="min-h-[100px]"
-      />
-    </Section>
-  )
+  const renderEditBulletSection = (title: string, key: string, items: { main: string; detail1?: string; detail2?: string }[]) => (
+    <div className="mb-4">
+      <h3 className="text-lg font-semibold mb-2">{title}</h3>
+      {items.map((item, index) => (
+        <div key={index} className="mb-2">
+          <input
+            type="text"
+            value={item.main}
+            onChange={(e) => handleBulletChange(key, index, 'main', e.target.value)}
+            className="w-full p-2 border rounded"
+          />
+          {item.detail1 && (
+            <input
+              type="text"
+              value={item.detail1}
+              onChange={(e) => handleBulletChange(key, index, 'detail1', e.target.value)}
+              className="w-full p-2 border rounded mt-1"
+            />
+          )}
+          {item.detail2 && (
+            <input
+              type="text"
+              value={item.detail2}
+              onChange={(e) => handleBulletChange(key, index, 'detail2', e.target.value)}
+              className="w-full p-2 border rounded mt-1"
+            />
+          )}
+        </div>
+      ))}
+      <Button onClick={() => handleAddBullet(key)}>Add {title}</Button>
+    </div>
+  );
 
   const renderContent = () => {
     if (mode === 'view') {
@@ -284,15 +323,15 @@ export function ExperienceCard({ initialData, persona, format = 'card', onPerson
           <div>
             {renderEditCardSection("Name", "name", data.name)}
             {renderEditCardSection("Summary", "summary", data.summary)}
-            {renderEditCardSection("Goals", "goals", data.goals)}
-            {renderEditCardSection("Next Steps", "nextSteps", data.nextSteps)}
-            {renderEditCardSection("Life Experiences", "lifeExperiences", data.lifeExperiences)}
+            {renderEditBulletSection("Goals", "goals", data.goals)}
+            {renderEditBulletSection("Next Steps", "nextSteps", data.nextSteps)}
+            {renderEditBulletSection("Life Experiences", "lifeExperiences", data.lifeExperiences)}
           </div>
           <div>
-            {renderEditCardSection("Qualifications and Education", "qualificationsAndEducation", data.qualificationsAndEducation)}
-            {renderEditCardSection("Skills", "skills", data.skills)}
-            {renderEditCardSection("Strengths", "strengths", data.strengths)}
-            {renderEditCardSection("Value Proposition", "valueProposition", data.valueProposition)}
+            {renderEditBulletSection("Qualifications and Education", "qualificationsAndEducation", data.qualificationsAndEducation)}
+            {renderEditBulletSection("Skills", "skills", data.skills)}
+            {renderEditBulletSection("Strengths", "strengths", data.strengths)}
+            {renderEditBulletSection("Value Proposition", "valueProposition", data.valueProposition)}
           </div>
         </>
       )
