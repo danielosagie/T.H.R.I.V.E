@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Footer } from "@/components/footer"
 import { ExperienceCard } from "@/components/experience-card"
 import axios from 'axios'
 import { format as formatDate } from 'date-fns'
-import { PersonaSelector } from "@/components/persona-selector"
 import { PersonaData } from '@/types/types'
 
 const transformPersonaData = (parsedPersona: any): PersonaData => {
@@ -143,6 +143,10 @@ export default function ViewPageClient() {
 
   const handleCardSelect = (id: string) => {
     setSelectedCardId(id)
+    const selected = cards.find(card => card.id === id)
+    if (selected) {
+      setSelectedPersona(selected)
+    }
   }
 
   const handlePersonaSelect = (persona: PersonaData) => {
@@ -156,28 +160,46 @@ export default function ViewPageClient() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <header className="border-b">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <Link href="/" className="flex items-center">
+            <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={20} height={20} className="sm:w-6 sm:h-6" />
+            <h1 className="text-sm sm:text-xl font-bold ml-2">THRIVE Toolkit</h1>
+          </Link>
+          <h2 className="text-lg sm:text-2xl font-bold text-center">Experience Card</h2>
+          {cards.length > 0 && (
+            <Select onValueChange={handleCardSelect} value={selectedCardId || undefined}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select a card" />
+              </SelectTrigger>
+              <SelectContent>
+                {cards.map((card) => (
+                  <SelectItem key={card.id} value={card.id}>
+                    {card.name || `Card ${card.id.slice(0, 8)}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </header>
       <main className="flex-grow container mx-auto px-4 py-8">
-        {selectedCardId === null ? (
-          <>
-            <h1 className="text-3xl font-bold mb-6">Your Experience Cards</h1>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cards.map((card) => (
-                <div key={card.id} className="p-4 border rounded flex flex-col h-full">
-                  <h2 className="text-xl font-semibold mb-2">{card.name || `Experience Card ${card.id}`}</h2>
-                  <p className="text-gray-600 mb-4 flex-grow">{card.summary}</p>
-                  <div className="flex flex-col items-center">
-                    <Button className="mb-2 w-full" onClick={() => handleCardSelect(card.id)}>View Details</Button>
-                    <p className="text-xs text-gray-400">
-                      {formatDate(new Date(card.timestamp), 'MMM d, yyyy HH:mm')}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Link href="/" passHref>
-              <Button className="mt-8" variant="outline">Back to Home</Button>
+        {cards.length === 0 ? (
+          <div className="text-center">
+            <h3 className="text-xl font-semibold mb-4">No Experience Cards Found</h3>
+            <p className="mb-6">Create your first Experience Card to get started!</p>
+            <Link href="/input" passHref>
+              <Button>Create Experience Card</Button>
             </Link>
-          </>
+          </div>
+        ) : selectedCardId === null ? (
+          <div className="text-center">
+            <h3 className="text-xl font-semibold mb-4">Select an Experience Card</h3>
+            <p className="mb-6">Choose a card from the dropdown above to view or edit.</p>
+            <Link href="/input" passHref>
+              <Button>Create New Experience Card</Button>
+            </Link>
+          </div>
         ) : (
           <ExperienceCard 
             initialData={cards.find(card => card.id === selectedCardId)} 

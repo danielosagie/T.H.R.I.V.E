@@ -20,6 +20,7 @@ import uuid
 # from sqlalchemy import create_engine
 # from sqlalchemy.orm import scoped_session, sessionmaker
 import asyncio
+from werkzeug.datastructures import MultiDict
 
 load_dotenv('.env.local')
 
@@ -59,7 +60,7 @@ agent = loop.run_until_complete(Agent.create("MainAgent", OLLAMA_BASE_URL, MODEL
 app = Flask(__name__)
 
 # Configure CORS
-CORS(app, resources={r"/*": {"origins": ["https://tcard.vercel.app", "http://localhost:3000"]}})
+CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "https://tcard.vercel.app"], "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
 
 @app.after_request
 def add_cors_headers(response):
@@ -76,59 +77,26 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # In-memory storage for personas
 personas = {}
 
-@app.route('/generate_persona_stream', methods=['POST'])
+@app.route('/generate_persona_stream', methods=['POST', 'OPTIONS'])
 def generate_persona_stream():
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'success'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+        return response
+    
     data = request.form.to_dict(flat=False)
-    prompt = f"""
-    Name: {data['firstName'][0]} {data['lastName'][0]}
-    Age Range: {data['ageRange'][0]}
-    Career Journey: {', '.join(data['careerJourney[]'])}
-    Other Career Journey: {data['otherCareerJourney'][0]}
-    Career Goals: {data['careerGoals'][0]}
-    Education: {data['education'][0]}
-    Field of Study: {', '.join(data['fieldOfStudy[]'])}
-    Other Field of Study: {data['otherFieldOfStudy'][0]}
-    Additional Training: {data['additionalTraining'][0]}
-    Technical Skills: {data['technicalSkills'][0]}
-    Creative Skills: {data['creativeSkills'][0]}
-    Other Skills: {data['otherSkills'][0]}
-    Work Experiences: {data['workExperiences'][0]}
-    Volunteer Experiences: {data['volunteerExperiences'][0]}
-    Military Life Experiences: {data['militaryLifeExperiences'][0]}
-    Transportation: {data['transportation'][0]}
-    Drive Distance: {data['driveDistance'][0]}
-    Military Base: {data['militaryBase'][0]}
-    Childcare: {data['childcare'][0]}
-    Childcare Cost: {data['childcareCost'][0]}
-    Childcare Distance: {data['childcareDistance'][0]}
-    Relocation: {data['relocation'][0]}
-    Work Preference: {data['workPreference'][0]}
-    Work Schedule: {data['workSchedule'][0]}
-    Work Hours: {data['workHours'][0]}
-    Regular Commitments: {data['regularCommitments'][0]}
-    Stress Management: {data['stressManagement'][0]}
-    Additional Information: {data['additionalInformation'][0]}
-    Stay Duration: {data['stayDuration'][0]}
+    # Convert the dictionary to a MultiDict
+    multi_data = MultiDict(data)
 
-    Based on the information above, generate a detailed persona profile with the following sections:
-    - Name
-    - Summary
-    - QualificationsAndEducation
-    - Skills
-    - Goals
-    - Strengths
-    - LifeExperiences
-    - ValueProposition
-    - NextSteps
-
-    For each section, provide detailed and insightful information based on the given data.
-    """
+    input_text = "\n".join([
+        f"{key}: {', '.join(multi_data.getlist(key)) if '[]' in key else multi_data.get(key)}"
+        for key in multi_data.keys() if key != 'generation_settings'
+    ])
 
     app.logger.info("Received request for generate_persona_stream")
     app.logger.info(f"Received data: {data}")
-    
-    # Construct the input text from the received data
-    input_text = "\n".join([f"{key}: {', '.join(data.getlist(key)) if '[]' in key else data.get(key)}" for key in data.keys() if key != 'generation_settings'])
     
     app.logger.info(f"Constructed input text: {input_text}")
     
@@ -325,5 +293,4 @@ def hello():
 #     db_session.remove()
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=os.environ.get('FLASK_ENV') != 'production')
+    app.run(debug=True, host='0.0.0.0', port=5000)

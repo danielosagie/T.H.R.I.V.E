@@ -105,6 +105,7 @@ export function ExperienceCardBuilderComponent() {
   const [currentStep, setCurrentStep] = useState(0)
   const [formData, setFormData] = useLocalStorage<FormData>('experienceCardFormData', initialFormData)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -135,25 +136,30 @@ export function ExperienceCardBuilderComponent() {
 
   const handleGenerateCard = async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const formDataToSend = new FormData()
-      for (const [key, value] of Object.entries(formData)) {
+      Object.entries(formData).forEach(([key, value]) => {
         if (Array.isArray(value)) {
           value.forEach(item => formDataToSend.append(`${key}[]`, item))
         } else {
-          formDataToSend.append(key, value as string)
+          formDataToSend.append(key, value)
         }
-      }
-      console.log("Form data being sent:", Object.fromEntries(formDataToSend))
-      const response = await axios.post(`${BACKEND_URL}/generate_persona_stream`, formDataToSend)
+      })
+
+      const response = await axios.post(`${BACKEND_URL}/generate_persona_stream`, formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        withCredentials: false
+      })
       console.log("Response received:", response.data)
       const generatedPersona = response.data.persona
       localStorage.setItem('generatedPersona', JSON.stringify(generatedPersona))
       router.push('/view')
-      localStorage.setItem('lastFormData', JSON.stringify(formData));
     } catch (error) {
-      console.error('Error generating persona:', error)
-      // Show an error message to the user
+      console.error("Error generating persona:", error)
+      setError("Failed to generate persona. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -552,13 +558,24 @@ export function ExperienceCardBuilderComponent() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <Link href="/" className="flex items-center">
-              <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
-              <h1 className="text-xl font-bold">THRIVE Toolkit</h1>
+              <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={20} height={20} className="sm:w-6 sm:h-6" />
+              <h1 className="text-sm sm:text-xl font-bold ml-2">THRIVE Toolkit</h1>
             </Link>
-            <h2 className="text-2xl font-bold">Building Your Experience Card</h2>
-            <div className="w-[200px]"></div> {/* Spacer for alignment */}
+            <h2 className="text-lg sm:text-2xl font-bold text-center">Building Your Experience Card</h2>
+            <div className="w-[100px] sm:w-[200px]"></div> {/* Spacer for alignment */}
           </div>
-          <div className="flex justify-between mt-4 px-8">
+          
+          {/* Mobile stepper */}
+          <div className="sm:hidden flex justify-between items-center mt-4">
+            <Button onClick={handleBack} disabled={currentStep === 0} size="sm">Back</Button>
+            <div className="text-sm font-medium">Step {currentStep + 1} of {steps.length}</div>
+            <Button onClick={handleNext} size="sm">
+              {currentStep === steps.length - 2 ? "Generate" : "Next"}
+            </Button>
+          </div>
+
+          {/* Desktop stepper */}
+          <div className="hidden sm:flex justify-between mt-4 px-8">
             {steps.map((step, index) => (
               <div key={index} className={`text-center ${index === currentStep ? 'text-primary font-bold' : 'text-muted-foreground'}`}>
                 <div className="text-sm">{step.title}</div>
