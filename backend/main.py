@@ -21,6 +21,7 @@ import uuid
 # from sqlalchemy.orm import scoped_session, sessionmaker
 import asyncio
 from werkzeug.datastructures import MultiDict
+import traceback
 
 load_dotenv('.env.local')
 
@@ -77,41 +78,69 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # In-memory storage for personas
 personas = {}
 
+def extract_json(text):
+    # Find the first occurrence of '{' and the last occurrence of '}'
+    start = text.find('{')
+    end = text.rfind('}')
+    
+    if start != -1 and end != -1:
+        # Extract the JSON-like string
+        json_str = text[start:end+1]
+        
+        # Remove any leading/trailing whitespace
+        json_str = json_str.strip()
+        
+        # Attempt to parse the JSON
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError:
+            # If parsing fails, attempt to fix common issues
+            # Replace single quotes with double quotes
+            json_str = json_str.replace("'", '"')
+            
+            # Ensure all keys are properly quoted
+            json_str = re.sub(r'(\w+)(?=\s*:)', r'"\1"', json_str)
+            
+            # Try parsing again
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                return None
+    return None
+
 @app.route('/generate_persona_stream', methods=['POST', 'OPTIONS'])
 def generate_persona_stream():
-    logging.debug(f"Received request: {request.method}")
-    logging.debug(f"Request data: {request.form}")
-    
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'success'})
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
         return response
-    
-    data = request.form.to_dict(flat=False)
-    # Convert the dictionary to a MultiDict
-    multi_data = MultiDict(data)
 
-    input_text = "\n".join([
-        f"{key}: {', '.join(multi_data.getlist(key)) if '[]' in key else multi_data.get(key)}"
-        for key in multi_data.keys() if key != 'generation_settings'
-    ])
+    try:
+        data = request.form.to_dict(flat=False)
+        # Convert the dictionary to a MultiDict
+        multi_data = MultiDict(data)
 
-    app.logger.info("Received request for generate_persona_stream")
-    app.logger.info(f"Received data: {data}")
-    
-    app.logger.info(f"Constructed input text: {input_text}")
-    
-    generation_settings = json.loads(data.get('generation_settings', '{}'))
-    
-    api_key = generation_settings.get('api_key') or os.environ.get("GROQ_API_KEY")
-    model = generation_settings.get('model', 'llama3-8b-8192')
-    creativity = float(generation_settings.get('creativity', 0.5))
-    realism = float(generation_settings.get('realism', 0.5))
-    custom_prompt = generation_settings.get('default_prompt', '')
-    
-    system_prompt = """You are an Employment Readiness Professional Counselor, Mental Therapist, and Behavioral Analyst. Your task is to create a comprehensive profile card for job seekers, extracting and inferring as much valuable information as possible from their experiences and goals. Generate an extensive list of tags for each section, being concise yet insightful. Dig deep like a behavioral therapist would, uncovering hidden strengths, skills, and potential. Use the following format, aiming for at least 10-15 tags per section:
+        input_text = "\n".join([
+            f"{key}: {', '.join(multi_data.getlist(key)) if '[]' in key else multi_data.get(key)}"
+            for key in multi_data.keys() if key != 'generation_settings'
+        ])
+
+        app.logger.info("Received request for generate_persona_stream")
+        app.logger.info(f"Received data: {data}")
+        
+        app.logger.info(f"Constructed input text: {input_text}")
+        
+        generation_settings = json.loads(data.get('generation_settings', '{}'))
+        
+        api_key = generation_settings.get('api_key') or os.environ.get("GROQ_API_KEY")
+        model = generation_settings.get('model', 'llama3-8b-8192')
+        creativity = float(generation_settings.get('creativity', 0.5))
+        realism = float(generation_settings.get('realism', 0.5))
+        custom_prompt = generation_settings.get('default_prompt', '')
+        
+        system_prompt = """You are an Employment Readiness Professional Counselor, Mental Therapist, and Behavioral Analyst. Your task is to create a comprehensive profile card for job seekers, extracting and inferring as much valuable information as possible from their experiences and goals. Generate an extensive list of tags for each section, being concise yet insightful. Dig deep like a behavioral therapist would, uncovering hidden strengths, skills, and potential. Use the following format, aiming for at least 10-15 tags per section:
 
 - Name: [Full Name]
 - Summary: [A creative and insightful 2-3 sentence summary highlighting unique qualities and potential. Avoid using "profile" or their name.]
@@ -162,10 +191,10 @@ def generate_persona_stream():
 
 Be extremely thorough and creative in extracting and inferring information. Each tag should be concise yet packed with meaning. Draw connections between experiences, skills, and career goals. Highlight unique combinations of skills or experiences that could set the candidate apart."""
 
-    input_prompt = f"""
+        input_prompt = f"""
 Create a professional profile card for a job seeker using the following information. Be creative and insightful in extracting relevant skills, traits, and potential connections from their current experiences to their new career goals:
 {input_text}
-Please format your response as a valid JSON object with the following structure:
+IMPORTANT: Your entire response must be a single, valid JSON object. Do not include any text outside of the JSON structure. Use the following structure, ensuring all keys and values are properly quoted:
 {{
   "name": "Full Name",
   "summary": "A creative and insightful 2-3 sentence summary",
@@ -205,12 +234,11 @@ Please format your response as a valid JSON object with the following structure:
     "Long-term aspiration, Milestones, Resources needed"
   ]
 }}
-Ensure all relevant information is included and formatted appropriately. If a section lacks direct information, creatively infer potential points based on the overall profile. Focus on highlighting the most transferable and relevant qualities for the person's career goals.
+Ensure all relevant information is included and formatted appropriately. If a section lacks direct information, creatively infer potential points based on the overall profile. Focus on highlighting the most transferable and relevant qualities for the person's career goals. You may include more than three items per section if needed.
 """
 
-    app.logger.info(f"Constructed input prompt: {input_prompt}")
+        app.logger.info(f"Constructed input prompt: {input_prompt}")
 
-    try:
         client = Groq(api_key=api_key)
         app.logger.info(f"Using API key: {api_key[:5]}...{api_key[-5:]}")
         app.logger.info(f"Using model: {model}")
@@ -239,61 +267,19 @@ Ensure all relevant information is included and formatted appropriately. If a se
                 generated_persona += chunk.choices[0].delta.content
 
         app.logger.info(f"Generated persona: {generated_persona[:500]}...")  # Log first 500 characters
-        parsed_data = parse_generated_persona(generated_persona)
-        app.logger.info(f"Parsed data: {json.dumps(parsed_data, indent=2)}")
 
-        if not parsed_data:
-            raise ValueError("Failed to parse generated persona")
+        parsed_data = extract_json(generated_persona)
+        
+        if parsed_data is None:
+            logging.error(f"Failed to parse generated persona. Raw response: {generated_persona}")
+            return jsonify({"error": "Failed to parse generated persona", "raw_response": generated_persona}), 500
 
-        full_persona_data = {
-            **data.to_dict(),
-            **parsed_data,
-            'generated_text': generated_persona,
-            'timestamp': datetime.now().isoformat()
-        }
-
-        persona_id = str(uuid.uuid4())
-        personas[persona_id] = full_persona_data
-
-        app.logger.info(f"Persona stored with ID: {persona_id}")
-        return jsonify({'persona': parsed_data, 'persona_id': persona_id})
+        return jsonify({"persona": parsed_data})
 
     except Exception as e:
-        app.logger.error(f"Error in generate_persona_stream: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-def parse_generated_persona(generated_text):
-    try:
-        sections = re.split(r'- (\w+):', generated_text)
-        parsed_data = {}
-        current_section = None
-        
-        for item in sections:
-            if item in ['Name', 'Summary', 'QualificationsAndEducation', 'Skills', 'Goals', 'Strengths', 'LifeExperiences', 'ValueProposition', 'NextSteps']:
-                current_section = item.lower()
-                parsed_data[current_section] = []
-            elif current_section:
-                items = [line.strip().lstrip('* ') for line in item.strip().split('\n') if line.strip()]
-                parsed_data[current_section].extend(items)
-        
-        return parsed_data
-    except Exception as e:
-        print(f"Error parsing generated persona: {e}")
-        return None
-
-# def store_persona_in_chroma(persona_data):
-#     persona_id = str(datetime.now().timestamp())
-#     try:
-#         persona_collection.add(
-#             ids=[persona_id],
-#             documents=[json.dumps(persona_data)],
-#             metadatas=[{"type": "persona"}]
-#         )
-#         app.logger.info(f"Persona stored in ChromaDB with ID: {persona_id}")
-#         return persona_id
-#     except Exception as e:
-#         app.logger.error(f"Error storing persona in ChromaDB: {str(e)}")
-#         raise
+        logging.error(f"Error in generate_persona_stream: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/get_persona/<persona_id>', methods=['GET'])
 def get_persona(persona_id):

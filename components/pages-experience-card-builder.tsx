@@ -152,6 +152,9 @@ export function ExperienceCardBuilderComponent() {
         withCredentials: false
       })
       console.log("Response received:", response.data)
+      if (response.data.error) {
+        throw new Error(response.data.error)
+      }
       const generatedPersona = response.data.persona
       localStorage.setItem('generatedPersona', JSON.stringify(generatedPersona))
       router.push('/view')
@@ -162,6 +165,9 @@ export function ExperienceCardBuilderComponent() {
         console.error("Response status:", error.response.status)
         console.error("Response headers:", error.response.headers)
         setError(`Failed to generate persona: ${error.response.data.error || error.response.data.message || 'Unknown error'}`)
+        if (error.response.data.raw_response) {
+          console.error("Raw response:", error.response.data.raw_response)
+        }
       } else if (error.request) {
         console.error("No response received:", error.request)
         setError("Failed to generate persona: No response received from server")
