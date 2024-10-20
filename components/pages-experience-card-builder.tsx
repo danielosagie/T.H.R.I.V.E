@@ -16,9 +16,7 @@ import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import { generatePersona } from '../lib/api'
 
-const BACKEND_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://tcard-vercel.onrender.com' 
-  : 'http://localhost:5000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
 const steps = [
   { title: "Introduction", description: "Getting to know you" },
@@ -159,7 +157,18 @@ export function ExperienceCardBuilderComponent() {
       router.push('/view')
     } catch (error) {
       console.error("Error generating persona:", error)
-      setError("Failed to generate persona. Please try again.")
+      if (error.response) {
+        console.error("Response data:", error.response.data)
+        console.error("Response status:", error.response.status)
+        console.error("Response headers:", error.response.headers)
+        setError(`Failed to generate persona: ${error.response.data.error || error.response.data.message || 'Unknown error'}`)
+      } else if (error.request) {
+        console.error("No response received:", error.request)
+        setError("Failed to generate persona: No response received from server")
+      } else {
+        console.error("Error setting up request:", error.message)
+        setError(`Failed to generate persona: ${error.message}`)
+      }
     } finally {
       setIsLoading(false)
     }

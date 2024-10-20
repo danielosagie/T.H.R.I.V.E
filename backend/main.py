@@ -24,7 +24,7 @@ from werkzeug.datastructures import MultiDict
 
 load_dotenv('.env.local')
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL')
 MODEL_NAME = os.getenv('MODEL_NAME', 'llama3')  # Add a default value
@@ -60,7 +60,7 @@ agent = loop.run_until_complete(Agent.create("MainAgent", OLLAMA_BASE_URL, MODEL
 app = Flask(__name__)
 
 # Configure CORS
-CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "https://tcard.vercel.app"], "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.after_request
 def add_cors_headers(response):
@@ -79,11 +79,14 @@ personas = {}
 
 @app.route('/generate_persona_stream', methods=['POST', 'OPTIONS'])
 def generate_persona_stream():
+    logging.debug(f"Received request: {request.method}")
+    logging.debug(f"Request data: {request.form}")
+    
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'success'})
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         return response
     
     data = request.form.to_dict(flat=False)
@@ -162,7 +165,48 @@ Be extremely thorough and creative in extracting and inferring information. Each
     input_prompt = f"""
 Create a professional profile card for a job seeker using the following information. Be creative and insightful in extracting relevant skills, traits, and potential connections from their current experiences to their new career goals:
 {input_text}
- Adhere to the structure outlined in the system prompt, ensuring all relevant information is included and formatted appropriately. If a section lacks direct information, creatively infer potential points based on the overall profile. Focus on highlighting the most transferable and relevant qualities for the person's career goals. Use bullet points within each section to list items. If you dont have enough information to fill the section as much as possible, create/extract similar and relevant skills and information that are relevant to their goal. Do not use the word "profile" in the summary, and do not just state what was provided in the input text, think of the bigger picture and their goals and how they want/need to percieve themselves"""
+Please format your response as a valid JSON object with the following structure:
+{{
+  "name": "Full Name",
+  "summary": "A creative and insightful 2-3 sentence summary",
+  "qualificationsAndEducation": [
+    "Relevant qualification/certification, Key aspect",
+    "Educational background, Notable achievement/skill gained",
+    "Additional training/course, Practical application"
+  ],
+  "skills": [
+    "Technical skill, Proficiency level, Practical application",
+    "Soft skill, Context where developed, Potential use in target field",
+    "Transferable skill, Origin, Relevance to career goals"
+  ],
+  "goals": [
+    "Career goal, Motivation behind it, Potential impact",
+    "Personal development goal, Relevance to career, Action plan",
+    "Learning objective, Expected outcome, Timeline"
+  ],
+  "strengths": [
+    "Core strength, Evidence from experiences, Potential application",
+    "Character trait, How it manifests, Value in target career",
+    "Unique strength, Origin story, Competitive advantage"
+  ],
+  "lifeExperiences": [
+    "Significant experience, Skills developed, Lessons learned",
+    "Challenge faced, How overcome, Personal growth",
+    "Unique life event, Impact on worldview, Relevance to career goals"
+  ],
+  "valueProposition": [
+    "Key value, Supporting evidence, Benefit to employer",
+    "Unique selling point, What sets them apart, Industry relevance",
+    "Personal mission, Alignment with career goals, Potential impact"
+  ],
+  "nextSteps": [
+    "Immediate action item, Expected outcome, Timeline",
+    "Medium-term goal, Steps to achieve, Potential obstacles",
+    "Long-term aspiration, Milestones, Resources needed"
+  ]
+}}
+Ensure all relevant information is included and formatted appropriately. If a section lacks direct information, creatively infer potential points based on the overall profile. Focus on highlighting the most transferable and relevant qualities for the person's career goals.
+"""
 
     app.logger.info(f"Constructed input prompt: {input_prompt}")
 
