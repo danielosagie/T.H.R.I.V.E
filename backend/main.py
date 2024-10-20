@@ -62,11 +62,10 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": ["https://tcard.vercel.app", "http://localhost:3000"]}})
 
 @app.after_request
-def after_request(response):
-    if os.environ.get('FLASK_ENV') == 'production':
-        response.headers.add('Access-Control-Allow-Origin', 'https://tcard.vercel.app')
-    else:
-        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+def add_cors_headers(response):
+    origin = request.headers.get('Origin')
+    if origin in ['https://tcard.vercel.app', 'http://localhost:3000']:
+        response.headers.add('Access-Control-Allow-Origin', origin)
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
@@ -98,7 +97,7 @@ def generate_persona_stream():
     
     system_prompt = """You are an Employment Readiness Professional Counselor and Mental Therapist. You are helping clients who have had difficult and detailed life experiences and are struggling to find a job. You are helping them to create a profile card of themselves to see the value they bring, meaning we want to extract the most relevant skills and traits and also show them the underlying traits they gained/have from their experiences and what they will need in order to get to their goals and will help them to find a job. Generate a profile card based on the provided information about the job seeker, you will not respond in any other way than the format outlined below seperated by commas for each quality you extract and imagine. Use the given data to create a complete profile, being creative in extracting relevant skills and traits. Structure the card using the following format:
 - Name: [Full Name]
-- Summary: [A creative and insightful 2-3 sentence summary of the person's profile, highlighting their unique qualities and potential. Do not use the word "profile" or their name in the summary, and do not just state what was provided in the input text, think of the bigger picture and their goals and how they want/need to percieve themselves. For example, if they are a teacher, do not just say "teacher", but rather say something like "a teacher who is passionate about education and helping others learn"]
+- Summary: [A creative and insightful 2-3 sentence summary of the person's profile, highlighting their unique qualities and potential. Do not use the word "profile" or their name in the summary, and do not just state what was provided in the input text, think of the bigger picture and their goals and how they want/need to percieve themselves. For example, if they are a teacher, do not just say "teacher", but rather say something like "a teacher who is passionate about education and helping others learn. When you generate the other sections try to be as efficient as possible in the length of the tags but be as creative and insightful in crating as many tags as possible to show the full picture of the person and their goals and how they want/need to percieve themselves. A skill like python could have implications for other sections like curiosity for strengths or percerverice, or based on their experiences and how they applied it could have implications for their value proposition. Try to rethink every tag and how they play in the bigger picture of this person and their goals."]
 </PersonalInfo>
 <QualificationsAndEducation>
 - [Most relevant qualification]
@@ -199,23 +198,38 @@ Create a professional profile card for a job seeker using the following informat
 
 def parse_generated_persona(generated_text):
     try:
-        # Remove any text before the first '{' and after the last '}'
-        json_start = generated_text.find('{')
-        json_end = generated_text.rfind('}') + 1
-        json_string = generated_text[json_start:json_end]
+        # Split the text into sections
+        sections = re.split(r'<(\w+)>', generated_text)
+        parsed_data = {}
+        current_section = None
         
-        # Parse the JSON string
-        parsed_data = json.loads(json_string)
+        for item in sections:
+            if item in ['PersonalInfo', 'QualificationsAndEducation', 'Skills', 'Goals', 'Strengths', 'LifeExperiences', 'ValueProposition', 'NextSteps']:
+                current_section = item.lower()
+                parsed_data[current_section] = []
+            elif current_section:
+                # Remove bullet points and split by newlines
+                items = [line.strip().lstrip('- ') for line in item.strip().split('\n') if line.strip()]
+                parsed_data[current_section].extend(items)
+        
+        # Extract name and summary from PersonalInfo
+        if 'personalinfo' in parsed_data:
+            for item in parsed_data['personalinfo']:
+                if item.startswith('Name:'):
+                    parsed_data['name'] = item.split(':', 1)[1].strip()
+                elif item.startswith('Summary:'):
+                    parsed_data['summary'] = item.split(':', 1)[1].strip()
+            del parsed_data['personalinfo']
         
         # Ensure all required keys are present
-        required_keys = ['name', 'summary', 'goals', 'nextSteps', 'lifeExperiences', 'qualificationsAndEducation', 'skills', 'strengths', 'valueProposition']
+        required_keys = ['name', 'summary', 'goals', 'nextsteps', 'lifeexperiences', 'qualificationsandeducation', 'skills', 'strengths', 'valueproposition']
         for key in required_keys:
             if key not in parsed_data:
                 parsed_data[key] = []
         
         return parsed_data
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON: {e}")
+    except Exception as e:
+        print(f"Error parsing generated persona: {e}")
         return None
 
 # def store_persona_in_chroma(persona_data):
