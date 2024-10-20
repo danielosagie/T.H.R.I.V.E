@@ -16,13 +16,13 @@ interface ExperienceCardData {
   id?: string
   name: string
   summary: string
-  goals: string[]
-  nextSteps: string[]
-  lifeExperiences: string[]
-  qualificationsAndEducation: string[]
-  skills: string[]
-  strengths: string[]
-  valueProposition: string[]
+  goals: { main: string; detail1?: string; detail2?: string }[]
+  nextSteps: { main: string; detail1?: string; detail2?: string }[]
+  lifeExperiences: { main: string; detail1?: string; detail2?: string }[]
+  qualificationsAndEducation: { main: string; detail1?: string; detail2?: string }[]
+  skills: { main: string; detail1?: string; detail2?: string }[]
+  strengths: { main: string; detail1?: string; detail2?: string }[]
+  valueProposition: { main: string; detail1?: string; detail2?: string }[]
 }
 
 const emptyData: ExperienceCardData = {
@@ -40,7 +40,7 @@ const emptyData: ExperienceCardData = {
 const API_URL = 'https://tcard-vercel.onrender.com'
 
 interface ExperienceCardProps {
-  initialData?: PersonaData
+  initialData?: ExperienceCardData
   persona?: PersonaData
   format?: 'card' | 'bullet'
   onPersonaSelect: (persona: PersonaData) => void
@@ -51,7 +51,23 @@ export function ExperienceCard({ initialData, persona, format = 'card', onPerson
   const [mode, setMode] = useState<'edit' | 'view'>('view')
   const [cardFormat, setCardFormat] = useState<'card' | 'bullet'>(format)
   const [lastAutoSave, setLastAutoSave] = useState<string | null>(null)
-  const [data, setData] = useState<ExperienceCardData>(persona || initialData || emptyData)
+  const [data, setData] = useState<ExperienceCardData>(() => {
+    if (persona) {
+      return {
+        id: persona.id,
+        name: persona.name,
+        summary: persona.summary,
+        goals: persona.goals,
+        nextSteps: persona.nextSteps,
+        lifeExperiences: persona.lifeExperiences,
+        qualificationsAndEducation: persona.qualificationsAndEducation,
+        skills: persona.skills,
+        strengths: persona.strengths,
+        valueProposition: persona.valueProposition
+      }
+    }
+    return initialData || emptyData
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedPersona, setSelectedPersona] = useState<PersonaData | null>(null)
@@ -167,20 +183,34 @@ export function ExperienceCard({ initialData, persona, format = 'card', onPerson
     setData(persona)
   }
 
-  const handleBulletChange = (section: string, index: number, field: 'main' | 'detail1' | 'detail2', value: string) => {
-    setData(prevData => ({
-      ...prevData,
-      [section]: prevData[section].map((item, i) => 
-        i === index ? { ...item, [field]: value } : item
-      )
-    }));
+  const handleBulletChange = (section: keyof ExperienceCardData, index: number, field: 'main' | 'detail1' | 'detail2', value: string) => {
+    setData(prevData => {
+      const sectionData = prevData[section];
+      if (!Array.isArray(sectionData)) {
+        console.error(`Section ${section} is not an array`);
+        return prevData;
+      }
+      return {
+        ...prevData,
+        [section]: sectionData.map((item, i) => 
+          i === index ? { ...item, [field]: value } : item
+        )
+      };
+    });
   };
 
-  const handleAddBullet = (section: string) => {
-    setData(prevData => ({
-      ...prevData,
-      [section]: [...prevData[section], { main: '', detail1: '', detail2: '' }]
-    }));
+  const handleAddBullet = (section: keyof ExperienceCardData) => {
+    setData(prevData => {
+      const sectionData = prevData[section];
+      if (!Array.isArray(sectionData)) {
+        console.error(`Section ${section} is not an array`);
+        return prevData;
+      }
+      return {
+        ...prevData,
+        [section]: [...sectionData, { main: '', detail1: '', detail2: '' }]
+      };
+    });
   };
 
   if (loading) {
@@ -191,27 +221,25 @@ export function ExperienceCard({ initialData, persona, format = 'card', onPerson
     return <div className="flex justify-center items-center h-screen text-red-500">{error}</div>
   }
 
-  const renderViewSection = (title: string, content: string | string[]) => (
-    <Section title={title}>
-      {Array.isArray(content) ? (
-        content.length > 0 ? (
-          cardFormat === 'card' ? (
-            content.map((item, index) => <Tag key={index}>{item}</Tag>)
-          ) : (
-            <ul className="list-disc list-inside">
-              {content.map((item, index) => (
-                <li key={index} className="text-neutral-300">{item}</li>
-              ))}
-            </ul>
-          )
+  const renderViewSection = (title: string, content: string | { main: string; detail1?: string; detail2?: string }[]) => {
+    return (
+      <Section title={title}>
+        {Array.isArray(content) ? (
+          <ul>
+            {content.map((item, index) => (
+              <li key={index}>
+                {item.main}
+                {item.detail1 && <div className="ml-4 text-sm">{item.detail1}</div>}
+                {item.detail2 && <div className="ml-4 text-sm">{item.detail2}</div>}
+              </li>
+            ))}
+          </ul>
         ) : (
-          <p className="text-neutral-400">{`Your ${typeof title === 'string' ? title.toLowerCase() : 'content'} will appear here.`}</p>
-        )
-      ) : (
-        <p className="text-neutral-300">{content || `Your ${typeof title === 'string' ? title.toLowerCase() : 'content'} will appear here.`}</p>
-      )}
-    </Section>
-  )
+          <p>{content}</p>
+        )}
+      </Section>
+    );
+  };
 
   const renderEditCardSection = (title: string, section: keyof ExperienceCardData, content: string | string[]) => (
     <Section title={title}>
@@ -255,38 +283,45 @@ export function ExperienceCard({ initialData, persona, format = 'card', onPerson
     </Section>
   )
 
-  const renderEditBulletSection = (title: string, key: string, items: { main: string; detail1?: string; detail2?: string }[]) => (
-    <div className="mb-4">
-      <h3 className="text-lg font-semibold mb-2">{title}</h3>
-      {items.map((item, index) => (
-        <div key={index} className="mb-2">
-          <input
-            type="text"
-            value={item.main}
-            onChange={(e) => handleBulletChange(key, index, 'main', e.target.value)}
-            className="w-full p-2 border rounded"
-          />
-          {item.detail1 && (
+  const renderEditBulletSection = (title: string, key: keyof ExperienceCardData) => {
+    const sectionData = data[key];
+    if (!Array.isArray(sectionData)) {
+      console.error(`Section ${key} is not an array`);
+      return null;
+    }
+    return (
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold mb-2">{title}</h3>
+        {sectionData.map((item, index) => (
+          <div key={index} className="mb-2">
             <input
               type="text"
-              value={item.detail1}
-              onChange={(e) => handleBulletChange(key, index, 'detail1', e.target.value)}
-              className="w-full p-2 border rounded mt-1"
+              value={item.main}
+              onChange={(e) => handleBulletChange(key, index, 'main', e.target.value)}
+              className="w-full p-2 border rounded"
             />
-          )}
-          {item.detail2 && (
-            <input
-              type="text"
-              value={item.detail2}
-              onChange={(e) => handleBulletChange(key, index, 'detail2', e.target.value)}
-              className="w-full p-2 border rounded mt-1"
-            />
-          )}
-        </div>
-      ))}
-      <Button onClick={() => handleAddBullet(key)}>Add {title}</Button>
-    </div>
-  );
+            {item.detail1 !== undefined && (
+              <input
+                type="text"
+                value={item.detail1}
+                onChange={(e) => handleBulletChange(key, index, 'detail1', e.target.value)}
+                className="w-full p-2 border rounded mt-1"
+              />
+            )}
+            {item.detail2 !== undefined && (
+              <input
+                type="text"
+                value={item.detail2}
+                onChange={(e) => handleBulletChange(key, index, 'detail2', e.target.value)}
+                className="w-full p-2 border rounded mt-1"
+              />
+            )}
+          </div>
+        ))}
+        <Button onClick={() => handleAddBullet(key)}>Add {title}</Button>
+      </div>
+    );
+  };
 
   const renderContent = () => {
     if (mode === 'view') {
@@ -298,6 +333,10 @@ export function ExperienceCard({ initialData, persona, format = 'card', onPerson
             {renderViewSection("Goals", data.goals)}
             {renderViewSection("Next Steps", data.nextSteps)}
             {renderViewSection("Life Experiences", data.lifeExperiences)}
+            {renderViewSection("Qualifications and Education", data.qualificationsAndEducation)}
+            {renderViewSection("Skills", data.skills)}
+            {renderViewSection("Strengths", data.strengths)}
+            {renderViewSection("Value Proposition", data.valueProposition)}
           </div>
           {cardFormat === 'card' && (
             <div>
@@ -323,30 +362,30 @@ export function ExperienceCard({ initialData, persona, format = 'card', onPerson
           <div>
             {renderEditCardSection("Name", "name", data.name)}
             {renderEditCardSection("Summary", "summary", data.summary)}
-            {renderEditBulletSection("Goals", "goals", data.goals)}
-            {renderEditBulletSection("Next Steps", "nextSteps", data.nextSteps)}
-            {renderEditBulletSection("Life Experiences", "lifeExperiences", data.lifeExperiences)}
+            {renderEditBulletSection("Goals", "goals")}
+            {renderEditBulletSection("Next Steps", "nextSteps")}
+            {renderEditBulletSection("Life Experiences", "lifeExperiences")}
           </div>
           <div>
-            {renderEditBulletSection("Qualifications and Education", "qualificationsAndEducation", data.qualificationsAndEducation)}
-            {renderEditBulletSection("Skills", "skills", data.skills)}
-            {renderEditBulletSection("Strengths", "strengths", data.strengths)}
-            {renderEditBulletSection("Value Proposition", "valueProposition", data.valueProposition)}
+            {renderEditBulletSection("Qualifications and Education", "qualificationsAndEducation")}
+            {renderEditBulletSection("Skills", "skills")}
+            {renderEditBulletSection("Strengths", "strengths")}
+            {renderEditBulletSection("Value Proposition", "valueProposition")}
           </div>
         </>
       )
     } else {
       return (
         <div className="col-span-2">
-          {renderEditBulletSection("Name", "name", data.name)}
-          {renderEditBulletSection("Summary", "summary", data.summary)}
-          {renderEditBulletSection("Goals", "goals", data.goals)}
-          {renderEditBulletSection("Next Steps", "nextSteps", data.nextSteps)}
-          {renderEditBulletSection("Life Experiences", "lifeExperiences", data.lifeExperiences)}
-          {renderEditBulletSection("Qualifications and Education", "qualificationsAndEducation", data.qualificationsAndEducation)}
-          {renderEditBulletSection("Skills", "skills", data.skills)}
-          {renderEditBulletSection("Strengths", "strengths", data.strengths)}
-          {renderEditBulletSection("Value Proposition", "valueProposition", data.valueProposition)}
+          {renderEditBulletSection("Name", "name")}
+          {renderEditBulletSection("Summary", "summary")}
+          {renderEditBulletSection("Goals", "goals")}
+          {renderEditBulletSection("Next Steps", "nextSteps")}
+          {renderEditBulletSection("Life Experiences", "lifeExperiences")}
+          {renderEditBulletSection("Qualifications and Education", "qualificationsAndEducation")}
+          {renderEditBulletSection("Skills", "skills")}
+          {renderEditBulletSection("Strengths", "strengths")}
+          {renderEditBulletSection("Value Proposition", "valueProposition")}
         </div>
       )
     }
