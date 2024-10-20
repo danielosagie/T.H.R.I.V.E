@@ -27,7 +27,7 @@ const transformPersonaData = (parsedPersona: any): PersonaData => {
       timestamp: parsedPersona.timestamp || Date.now()
     };
   } else if (typeof parsedPersona === 'string') {
-    // Handle the string format (if still needed)
+    // Handle the string format
     const sections = parsedPersona.split('\n\n')
     const extractSection = (title: string) => {
       const section = sections.find(s => s.startsWith(`**${title}:**`))
@@ -35,7 +35,7 @@ const transformPersonaData = (parsedPersona: any): PersonaData => {
     }
     const extractList = (title: string) => {
       const section = extractSection(title)
-      return section ? section.split('\n').map(item => item.trim().replace(/^[-•]\s*/, '')) : []
+      return section ? section.split('\n').map(item => ({ main: item.trim().replace(/^[-•]\s*/, '') })) : []
     }
 
     return {
@@ -61,7 +61,7 @@ const transformPersonaData = (parsedPersona: any): PersonaData => {
       ],
       valueProposition: [], // Infer value proposition from other sections if possible
       nextSteps: [], // Infer next steps from career goals if possible
-      timestamp: Date.now() // Add this line
+      timestamp: Date.now()
     }
   } else {
     // Handle unexpected format
@@ -77,7 +77,7 @@ const transformPersonaData = (parsedPersona: any): PersonaData => {
       lifeExperiences: [],
       valueProposition: [],
       nextSteps: [],
-      timestamp: Date.now() // Add this line
+      timestamp: Date.now()
     };
   }
 };
