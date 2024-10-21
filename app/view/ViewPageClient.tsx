@@ -1,214 +1,153 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DownloadIcon } from 'lucide-react'
 import { Footer } from "@/components/footer"
 import { ExperienceCard } from "@/components/experience-card"
-import axios from 'axios'
-import { format as formatDate } from 'date-fns'
 import { PersonaData } from '@/types/types'
-
-const transformPersonaData = (parsedPersona: any): PersonaData => {
-  if (typeof parsedPersona === 'object' && !Array.isArray(parsedPersona)) {
-    // Handle the API response format
-    return {
-      id: parsedPersona.persona_id || String(Date.now()),
-      name: parsedPersona.name || `${parsedPersona.firstName} ${parsedPersona.lastName}`,
-      summary: parsedPersona.summary || '',
-      qualificationsAndEducation: transformSection(parsedPersona.qualificationsandeducation),
-      skills: transformSection(parsedPersona.skills),
-      goals: transformSection(parsedPersona.goals),
-      strengths: transformSection(parsedPersona.strengths),
-      lifeExperiences: transformSection(parsedPersona.lifeexperiences),
-      valueProposition: transformSection(parsedPersona.valueproposition),
-      nextSteps: transformSection(parsedPersona.nextsteps),
-      timestamp: parsedPersona.timestamp || Date.now()
-    };
-  } else if (typeof parsedPersona === 'string') {
-    // Handle the string format
-    const sections = parsedPersona.split('\n\n')
-    const extractSection = (title: string) => {
-      const section = sections.find(s => s.startsWith(`**${title}:**`))
-      return section ? section.replace(`**${title}:**`, '').trim() : ''
-    }
-    const extractList = (title: string) => {
-      const section = extractSection(title)
-      return section ? section.split('\n').map(item => ({ main: item.trim().replace(/^[-•]\s*/, '') })) : []
-    }
-
-    return {
-      id: String(Date.now()),
-      name: extractSection('Name'),
-      summary: extractSection('Career Journey'),
-      qualificationsAndEducation: [
-        ...extractList('Education'),
-        ...extractList('Additional Training'),
-        ...extractList('Field of Study')
-      ],
-      skills: [
-        ...extractList('Technical Skills'),
-        ...extractList('Creative Skills'),
-        ...extractList('Other Skills')
-      ],
-      goals: extractList('Career Goals'),
-      strengths: [], // Infer strengths from other sections if possible
-      lifeExperiences: [
-        ...extractList('Work Experiences'),
-        ...extractList('Volunteer Experiences'),
-        ...extractList('Military Life Experiences')
-      ],
-      valueProposition: [], // Infer value proposition from other sections if possible
-      nextSteps: [], // Infer next steps from career goals if possible
-      timestamp: Date.now()
-    }
-  } else {
-    // Handle unexpected format
-    console.error('Unexpected persona format:', parsedPersona);
-    return {
-      id: String(Date.now()),
-      name: 'Unknown',
-      summary: '',
-      qualificationsAndEducation: [],
-      skills: [],
-      goals: [],
-      strengths: [],
-      lifeExperiences: [],
-      valueProposition: [],
-      nextSteps: [],
-      timestamp: Date.now()
-    };
-  }
-};
-
-const transformSection = (section: any[]): { main: string; detail1?: string; detail2?: string }[] => {
-  if (!Array.isArray(section)) return [];
-  return section.map(item => {
-    if (typeof item === 'object') {
-      return {
-        main: item.main || '',
-        detail1: item.detail1,
-        detail2: item.detail2
-      };
-    }
-    return { main: item };
-  });
-};
+import { useRouter, useSearchParams } from 'next/navigation'
+import { PersonaSelector } from '@/components/persona-selector'
+import { ControlBar } from '@/components/control-bar'
 
 export default function ViewPageClient() {
-  const [cards, setCards] = useState<PersonaData[]>([])
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [format, setFormat] = useState<'card' | 'bullet'>('card')
-  const [selectedPersona, setSelectedPersona] = useState<PersonaData | undefined>(undefined)
+  const [personas, setPersonas] = useState<PersonaData[]>([])
+  const [selectedPersona, setSelectedPersona] = useState<PersonaData | null>(null)
+  const [mode, setMode] = useState<'view' | 'edit'>('view')
+  const [format, setFormat] = useState<'bullet' | 'card'>('bullet')
+  const [lastAutoSave, setLastAutoSave] = useState<string>('')
+
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const newCardId = searchParams.get('newCardId')
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const generatedPersona = localStorage.getItem('generatedPersona')
-        console.log('Generated Persona from localStorage:', generatedPersona)
-        if (generatedPersona) {
-          try {
-            const parsedPersona = JSON.parse(generatedPersona)
-            console.log('Parsed Persona:', parsedPersona)
-            const transformedPersona = transformPersonaData(parsedPersona)
-            console.log('Transformed Persona:', transformedPersona)
-            setCards([transformedPersona])
-            setSelectedCardId(transformedPersona.id)
-            setSelectedPersona(transformedPersona)
-          } catch (parseError) {
-            console.error('Error parsing persona:', parseError)
-            setError('Failed to parse generated persona. Please try again.')
-          }
-          localStorage.removeItem('generatedPersona') // Clear after use
-        } else {
-          console.log('No generated persona in localStorage, fetching from API')
-          const response = await axios.get('https://tcard-vercel.onrender.com/get_all_personas')
-          console.log('API Response:', response.data)
-          const transformedCards = response.data.map(transformPersonaData)
-          setCards(transformedCards)
-          if (transformedCards.length > 0) {
-            setSelectedCardId(transformedCards[0].id)
-          }
+    const storedPersonas = localStorage.getItem('personas')
+    if (storedPersonas) {
+      const parsedPersonas = JSON.parse(storedPersonas)
+      setPersonas(parsedPersonas)
+
+      const lastSelectedId = localStorage.getItem('lastSelectedPersonaId')
+      if (newCardId) {
+        const newCard = parsedPersonas.find((p: PersonaData) => p.id === newCardId)
+        if (newCard) {
+          setSelectedPersona(newCard)
+          localStorage.setItem('lastSelectedPersonaId', newCard.id)
         }
-      } catch (err) {
-        console.error('Error fetching cards:', err)
-        setError('Failed to load cards. Please try again later.')
+      } else if (lastSelectedId) {
+        const lastSelected = parsedPersonas.find((p: PersonaData) => p.id === lastSelectedId)
+        if (lastSelected) {
+          setSelectedPersona(lastSelected)
+        }
+      } else if (parsedPersonas.length > 0) {
+        setSelectedPersona(parsedPersonas[0])
+        localStorage.setItem('lastSelectedPersonaId', parsedPersonas[0].id)
       }
     }
+  }, [newCardId])
 
-    fetchData()
-  }, [])
-
-  const handleCardSelect = (id: string) => {
-    setSelectedCardId(id)
-    const selected = cards.find(card => card.id === id)
+  const handlePersonaSelect = (personaId: string) => {
+    const selected = personas.find(p => p.id === personaId)
     if (selected) {
       setSelectedPersona(selected)
+      localStorage.setItem('lastSelectedPersonaId', selected.id)
     }
   }
 
-  const handlePersonaSelect = (persona: PersonaData) => {
-    setSelectedPersona(persona)
-    setSelectedCardId(persona.id)
+  const handleModeChange = (newMode: 'view' | 'edit') => {
+    setMode(newMode)
   }
 
-  if (error) {
-    return <div className="text-red-500 text-center mt-8">{error}</div>
+  const handleExport = () => {
+    console.log("Exporting...")
+    // Implement export functionality here
+  }
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date()
+      setLastAutoSave(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`)
+      // Perform your autosave logic here
+    }, 60000) // Autosave every minute
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const renderContent = () => {
+    if (personas.length === 0) {
+      return (
+        <div className="text-center">
+          <h3 className="text-xl font-semibold mb-4">No Experience Cards Found</h3>
+          <Button onClick={() => router.push('/experience-card-builder')}>
+            Create Experience Card
+          </Button>
+        </div>
+      )
+    }
+
+    return (
+      <ExperienceCard
+        initialData={selectedPersona}
+        persona={selectedPersona}
+        format={format}
+        mode={mode}
+        onEdit={updateAutoSaveTimestamp}
+      />
+    )
+  }
+
+  const updateAutoSaveTimestamp = () => {
+    const now = new Date()
+    const hours = now.getHours().toString().padStart(2, '0')
+    const minutes = now.getMinutes().toString().padStart(2, '0')
+    setLastAutoSave(`${hours}:${minutes}`)
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center">
-            <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={20} height={20} className="sm:w-6 sm:h-6" />
-            <h1 className="text-sm sm:text-xl font-bold ml-2">THRIVE Toolkit</h1>
-          </Link>
-          <h2 className="text-lg sm:text-2xl font-bold text-center">Experience Card</h2>
-          {cards.length > 0 && (
-            <Select onValueChange={handleCardSelect} value={selectedCardId || undefined}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select a card" />
-              </SelectTrigger>
-              <SelectContent>
-                {cards.map((card) => (
-                  <SelectItem key={card.id} value={card.id}>
-                    {card.name || `Card ${card.id.slice(0, 8)}`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+    <div className="flex flex-col min-h-screen">
+      <header className="border-b border-gray-300">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center mb-4">
+            <Link href="/" className="flex items-center space-x-2">
+              <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
+              <span className="font-semibold">THRIVE Toolkit</span>
+            </Link>
+            <h1 className="text-2xl font-bold absolute left-1/2 transform -translate-x-1/2">Experience Card</h1>
+            <div className="w-6 h-6" /> {/* Placeholder for symmetry */}
+          </div>
+          <div className="flex justify-between items-center">
+            <Tabs value={mode} onValueChange={(value) => setMode(value as 'view' | 'edit')}>
+              <TabsList>
+                <TabsTrigger value="edit">Edit</TabsTrigger>
+                <TabsTrigger value="view">View</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-500">Last autosave at {lastAutoSave}</span>
+              <PersonaSelector
+                personas={personas}
+                selectedPersona={selectedPersona}
+                onPersonaSelect={handlePersonaSelect}
+              />
+              <Button variant="outline" onClick={handleExport}>
+                <DownloadIcon className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
+      <div className="container mx-auto px-4 py-4">
+        <ControlBar
+          format={format}
+          onFormatChange={setFormat}
+        />
+      </div>
       <main className="flex-grow container mx-auto px-4 py-8">
-        {cards.length === 0 ? (
-          <div className="text-center">
-            <h3 className="text-xl font-semibold mb-4">No Experience Cards Found</h3>
-            <p className="mb-6">Create your first Experience Card to get started!</p>
-            <Link href="/input" passHref>
-              <Button>Create Experience Card</Button>
-            </Link>
-          </div>
-        ) : selectedCardId === null ? (
-          <div className="text-center">
-            <h3 className="text-xl font-semibold mb-4">Select an Experience Card</h3>
-            <p className="mb-6">Choose a card from the dropdown above to view or edit.</p>
-            <Link href="/input" passHref>
-              <Button>Create New Experience Card</Button>
-            </Link>
-          </div>
-        ) : (
-          <ExperienceCard 
-            initialData={cards.find(card => card.id === selectedCardId)} 
-            persona={selectedPersona}
-            format={format} 
-            onPersonaSelect={handlePersonaSelect}
-            onBackToCards={() => setSelectedCardId(null)}
-          />
-        )}
+        {renderContent()}
       </main>
       <Footer />
     </div>

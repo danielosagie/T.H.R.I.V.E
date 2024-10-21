@@ -1,13 +1,12 @@
 export interface PersonaData {
-  id: string
+  id?: string
   name: string
   summary: string
-  qualificationsAndEducation: { main: string; detail1?: string; detail2?: string }[]
-  skills: { main: string; detail1?: string; detail2?: string }[]
-  goals: { main: string; detail1?: string; detail2?: string }[]
-  strengths: { main: string; detail1?: string; detail2?: string }[]
-  lifeExperiences: { main: string; detail1?: string; detail2?: string }[]
-  valueProposition: { main: string; detail1?: string; detail2?: string }[]
-  nextSteps: { main: string; detail1?: string; detail2?: string }[]
-  timestamp: number
+  goals: string[]
+  nextSteps: string[]
+  lifeExperiences: string[]
+  qualificationsAndEducation: string[]
+  skills: string[]
+  strengths: string[]
+  valueProposition: string[]
 }

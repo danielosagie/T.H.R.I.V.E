@@ -98,7 +98,11 @@ const initialFormData: FormData = {
   stayDuration: "",
 }
 
-export function ExperienceCardBuilderComponent() {
+interface ExperienceCardBuilderProps {
+  onCardCreated: (newCardId: string) => void
+}
+
+export function ExperienceCardBuilderComponent({ onCardCreated }: ExperienceCardBuilderProps) {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0)
   const [formData, setFormData] = useLocalStorage<FormData>('experienceCardFormData', initialFormData)
@@ -155,9 +159,29 @@ export function ExperienceCardBuilderComponent() {
       if (response.data.error) {
         throw new Error(response.data.error)
       }
-      const generatedPersona = response.data.persona
-      localStorage.setItem('generatedPersona', JSON.stringify(generatedPersona))
-      router.push('/view')
+      const newPersona = {
+        ...response.data.persona,
+        id: Date.now().toString(), // Add this line to generate a unique ID
+      }
+
+      // Save the new persona to localStorage
+      const storedPersonas = localStorage.getItem('personas')
+      const parsedPersonas = storedPersonas ? JSON.parse(storedPersonas) : []
+      const updatedPersonas = [newPersona, ...parsedPersonas]
+      localStorage.setItem('personas', JSON.stringify(updatedPersonas))
+
+      // Call the onCardCreated prop with the new card ID
+      if (onCardCreated && typeof onCardCreated === 'function') {
+        onCardCreated(newPersona.id)
+      } else {
+        console.error('onCardCreated is not a function or is undefined')
+        // Fallback to direct navigation if onCardCreated is not available
+        router.push(`/view?newCardId=${newPersona.id}`)
+      }
+
+      // Clear the form data from localStorage
+      localStorage.removeItem('experienceCardFormData')
+
     } catch (error) {
       console.error("Error generating persona:", error)
       if (error.response) {

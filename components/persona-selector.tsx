@@ -1,45 +1,27 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { format } from 'date-fns'
 import { PersonaData } from '@/types/types'
-import { useLocalStorage } from '@/hooks/useLocalStorage'
 
 interface PersonaSelectorProps {
-  onPersonaSelect: (persona: PersonaData) => void
+  personas: PersonaData[]
+  selectedPersona: PersonaData | null
+  onPersonaSelect: (personaId: string) => void
 }
 
-export function PersonaSelector({ onPersonaSelect }: PersonaSelectorProps) {
-  const [personas, setPersonas] = useLocalStorage<PersonaData[]>('generatedPersonas', [])
-  const [selectedPersonaId, setSelectedPersonaId] = useLocalStorage<string | null>('selectedPersonaId', null)
-
-  useEffect(() => {
-    if (personas.length > 0 && !selectedPersonaId) {
-      setSelectedPersonaId(personas[0].id)
-      onPersonaSelect(personas[0])
-    }
-  }, [personas, selectedPersonaId, onPersonaSelect, setSelectedPersonaId])
-
-  const handlePersonaSelect = (personaId: string) => {
-    setSelectedPersonaId(personaId)
-    const selectedPersona = personas.find(p => p.id === personaId)
-    if (selectedPersona) {
-      onPersonaSelect(selectedPersona)
-    }
-  }
-
+export function PersonaSelector({ personas, selectedPersona, onPersonaSelect }: PersonaSelectorProps) {
   if (personas.length === 0) {
-    return null
+    return null;
   }
 
   return (
-    <Select value={selectedPersonaId || undefined} onValueChange={handlePersonaSelect}>
+    <Select onValueChange={onPersonaSelect} value={selectedPersona?.id || ''}>
       <SelectTrigger className="w-[200px]">
         <SelectValue placeholder="Select a persona" />
       </SelectTrigger>
       <SelectContent>
         {personas.map((persona) => (
           <SelectItem key={persona.id} value={persona.id}>
-            {persona.name} - {format(new Date(persona.timestamp), 'MMM d, HH:mm')}
+            {persona.name}
           </SelectItem>
         ))}
       </SelectContent>

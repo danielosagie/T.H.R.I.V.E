@@ -1,417 +1,130 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import axios from 'axios'
-import { Header } from './header'
-import { ControlBar } from './control-bar'
+import React, { useState } from 'react'
 import { Section } from './section'
-import { Tag } from './tag'
+import { TagInput } from 'emblor'
+import { PersonaData } from '@/types/types'
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { PlusIcon, XIcon } from 'lucide-react'
-import { PersonaData } from '@/types/types'  // Adjust the import path as necessary
-
-interface ExperienceCardData {
-  id?: string
-  name: string
-  summary: string
-  goals: { main: string; detail1?: string; detail2?: string }[]
-  nextSteps: { main: string; detail1?: string; detail2?: string }[]
-  lifeExperiences: { main: string; detail1?: string; detail2?: string }[]
-  qualificationsAndEducation: { main: string; detail1?: string; detail2?: string }[]
-  skills: { main: string; detail1?: string; detail2?: string }[]
-  strengths: { main: string; detail1?: string; detail2?: string }[]
-  valueProposition: { main: string; detail1?: string; detail2?: string }[]
-}
-
-const emptyData: ExperienceCardData = {
-  name: "",
-  summary: "",
-  goals: [],
-  nextSteps: [],
-  lifeExperiences: [],
-  qualificationsAndEducation: [],
-  skills: [],
-  strengths: [],
-  valueProposition: []
-}
-
-const API_URL = 'https://tcard-vercel.onrender.com'
 
 interface ExperienceCardProps {
-  initialData?: ExperienceCardData
-  persona?: PersonaData
-  format?: 'card' | 'bullet'
-  onPersonaSelect: (persona: PersonaData) => void
-  onBackToCards: () => void
+  initialData: PersonaData | null
+  persona: PersonaData | null
+  format: 'card' | 'bullet'
+  mode: 'view' | 'edit'
+  onEdit: () => void
 }
 
-export function ExperienceCard({ initialData, persona, format = 'card', onPersonaSelect, onBackToCards }: ExperienceCardProps) {
-  const [mode, setMode] = useState<'edit' | 'view'>('view')
-  const [cardFormat, setCardFormat] = useState<'card' | 'bullet'>(format)
-  const [lastAutoSave, setLastAutoSave] = useState<string | null>(null)
-  const [data, setData] = useState<ExperienceCardData>(() => {
-    if (persona) {
-      return {
-        id: persona.id,
-        name: persona.name,
-        summary: persona.summary,
-        goals: persona.goals,
-        nextSteps: persona.nextSteps,
-        lifeExperiences: persona.lifeExperiences,
-        qualificationsAndEducation: persona.qualificationsAndEducation,
-        skills: persona.skills,
-        strengths: persona.strengths,
-        valueProposition: persona.valueProposition
-      }
-    }
-    return initialData || emptyData
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [selectedPersona, setSelectedPersona] = useState<PersonaData | null>(null)
+export function ExperienceCard({ initialData, persona, format, mode, onEdit }: ExperienceCardProps) {
+  const [data, setData] = useState<PersonaData>(persona || initialData || {
+    name: '',
+    summary: '',
+    goals: [],
+    nextSteps: [],
+    lifeExperiences: [],
+    qualificationsAndEducation: [],
+    skills: [],
+    strengths: [],
+    valueProposition: []
+  } as PersonaData)
 
-  useEffect(() => {
-    if (persona) {
-      setData(persona)
-    } else if (initialData) {
-      setData(initialData)
-    } else {
-      setData(emptyData)
-    }
-  }, [persona, initialData])
-
-  useEffect(() => {
-    setCardFormat(format)
-  }, [format])
-
-  useEffect(() => {
-    if (!initialData) {
-      setError('No data available');
-      setLoading(false);
-      return;
-    }
-
-    const storedData = localStorage.getItem('experienceCardData')
-    if (storedData) {
-      try {
-        const parsedData = JSON.parse(storedData)
-        setData(parsedData)
-        setLastAutoSave(localStorage.getItem('lastAutoSave'))
-        setLoading(false)
-      } catch (err) {
-        console.error('Error parsing stored data:', err)
-        fetchData()
-      }
-    } else {
-      fetchData()
-    }
-  }, [initialData])
-
-  useEffect(() => {
-    if (!loading) {
-      localStorage.setItem('experienceCardData', JSON.stringify(data))
-      const currentTime = new Date().toLocaleTimeString()
-      localStorage.setItem('lastAutoSave', currentTime)
-      setLastAutoSave(currentTime)
-    }
-  }, [data, loading])
-
-  const fetchData = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/get_all_personas`)
-      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-        const latestPersona = response.data[response.data.length - 1]
-        setData(latestPersona)
-      } else {
-        setData(emptyData)
-      }
-      setLoading(false)
-    } catch (err) {
-      console.error('Error fetching data:', err)
-      setError('Failed to load data. Please try again later.')
-      setData(emptyData)
-      setLoading(false)
-    }
-  }
-
-  const handleModeChange = (newMode: 'edit' | 'view') => {
-    setMode(newMode)
-  }
-
-  const handleFormatChange = (newFormat: 'card' | 'bullet') => {
-    setCardFormat(newFormat)
-  }
-
-  const handleExport = () => {
-    console.log("Exporting...")
-    // Implement export functionality here
-  }
-
-  const handleDataChange = (section: keyof ExperienceCardData, value: string | string[]) => {
-    setData(prevData => ({ ...prevData, [section]: value }))
-  }
-
-  const handleAddTag = (section: keyof ExperienceCardData) => {
-    setData(prevData => ({
-      ...prevData,
-      [section]: Array.isArray(prevData[section]) ? [...prevData[section], ''] : ['']
-    }))
-  }
-
-  const handleRemoveTag = (section: keyof ExperienceCardData, index: number) => {
-    setData(prevData => ({
-      ...prevData,
-      [section]: Array.isArray(prevData[section]) 
-        ? prevData[section].filter((_, i) => i !== index)
-        : []
-    }))
-  }
-
-  const handleTagChange = (section: keyof ExperienceCardData, index: number, value: string) => {
-    setData(prevData => ({
-      ...prevData,
-      [section]: Array.isArray(prevData[section])
-        ? prevData[section].map((item, i) => i === index ? value : item)
-        : [value]
-    }))
-  }
-
-  const handlePersonaSelect = (persona: PersonaData) => {
-    setSelectedPersona(persona)
-    setData(persona)
-  }
-
-  const handleBulletChange = (section: keyof ExperienceCardData, index: number, field: 'main' | 'detail1' | 'detail2', value: string) => {
-    setData(prevData => {
-      const sectionData = prevData[section];
-      if (!Array.isArray(sectionData)) {
-        console.error(`Section ${section} is not an array`);
-        return prevData;
-      }
-      return {
-        ...prevData,
-        [section]: sectionData.map((item, i) => 
-          i === index ? { ...item, [field]: value } : item
-        )
-      };
-    });
-  };
-
-  const handleAddBullet = (section: keyof ExperienceCardData) => {
-    setData(prevData => {
-      const sectionData = prevData[section];
-      if (!Array.isArray(sectionData)) {
-        console.error(`Section ${section} is not an array`);
-        return prevData;
-      }
-      return {
-        ...prevData,
-        [section]: [...sectionData, { main: '', detail1: '', detail2: '' }]
-      };
-    });
-  };
-
-  if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>
-  }
-
-  if (error) {
-    return <div className="flex justify-center items-center h-screen text-red-500">{error}</div>
-  }
-
-  const renderViewSection = (title: string, content: string | { main: string; detail1?: string; detail2?: string }[]) => {
+  if (!data) {
     return (
-      <Section title={title}>
-        {Array.isArray(content) ? (
-          <ul>
-            {content.map((item, index) => (
-              <li key={index}>
-                {item.main}
-                {item.detail1 && <div className="ml-4 text-sm">{item.detail1}</div>}
-                {item.detail2 && <div className="ml-4 text-sm">{item.detail2}</div>}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>{content}</p>
-        )}
-      </Section>
-    );
-  };
-
-  const renderEditCardSection = (title: string, section: keyof ExperienceCardData, content: string | string[]) => (
-    <Section title={title}>
-      {Array.isArray(content) ? (
-        <>
-          {content.map((item, index) => (
-            <div key={index} className="flex items-center mb-2 group">
-              <Input
-                value={item}
-                onChange={(e) => handleTagChange(section, index, e.target.value)}
-                className="mr-2"
-                style={{ width: `${Math.max(10, item.length)}ch` }}
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleRemoveTag(section, index)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <XIcon className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleAddTag(section)}
-            className={content.length === 0 ? "" : "opacity-0 hover:opacity-100 transition-opacity"}
-          >
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Add {title}
-          </Button>
-        </>
-      ) : (
-        <Input
-          value={content}
-          onChange={(e) => handleDataChange(section, e.target.value)}
-          style={{ width: `${Math.max(10, (content || '').length)}ch` }}
-        />
-      )}
-    </Section>
-  )
-
-  const renderEditBulletSection = (title: string, key: keyof ExperienceCardData) => {
-    const sectionData = data[key];
-    if (!Array.isArray(sectionData)) {
-      console.error(`Section ${key} is not an array`);
-      return null;
-    }
-    return (
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-2">{title}</h3>
-        {sectionData.map((item, index) => (
-          <div key={index} className="mb-2">
-            <input
-              type="text"
-              value={item.main}
-              onChange={(e) => handleBulletChange(key, index, 'main', e.target.value)}
-              className="w-full p-2 border rounded"
-            />
-            {item.detail1 !== undefined && (
-              <input
-                type="text"
-                value={item.detail1}
-                onChange={(e) => handleBulletChange(key, index, 'detail1', e.target.value)}
-                className="w-full p-2 border rounded mt-1"
-              />
-            )}
-            {item.detail2 !== undefined && (
-              <input
-                type="text"
-                value={item.detail2}
-                onChange={(e) => handleBulletChange(key, index, 'detail2', e.target.value)}
-                className="w-full p-2 border rounded mt-1"
-              />
-            )}
-          </div>
-        ))}
-        <Button onClick={() => handleAddBullet(key)}>Add {title}</Button>
+      <div className="text-center text-white">
+        <h3 className="text-xl font-semibold mb-4">No Card Selected</h3>
+        <p>Please select a card from the dropdown above to view its content.</p>
       </div>
-    );
-  };
+    )
+  }
 
-  const renderContent = () => {
+  const parseTags = (content: string | string[]): string[] => {
+    if (typeof content === 'string') {
+      return content.split(', ').filter(Boolean)
+    }
+    return content.flatMap(item => item.split(', ')).filter(Boolean)
+  }
+
+  const handleDataChange = (newData: Partial<PersonaData>) => {
+    setData(prevData => ({ ...prevData, ...newData }))
+    onEdit()
+  }
+
+  const renderContent = (title: string, content: string | string[], isNameSummary = false) => {
     if (mode === 'view') {
       return (
-        <>
-          <div className={cardFormat === 'bullet' ? 'col-span-2' : ''}>
-            {renderViewSection("Name", data.name)}
-            {renderViewSection("Summary", data.summary)}
-            {renderViewSection("Goals", data.goals)}
-            {renderViewSection("Next Steps", data.nextSteps)}
-            {renderViewSection("Life Experiences", data.lifeExperiences)}
-            {renderViewSection("Qualifications and Education", data.qualificationsAndEducation)}
-            {renderViewSection("Skills", data.skills)}
-            {renderViewSection("Strengths", data.strengths)}
-            {renderViewSection("Value Proposition", data.valueProposition)}
-          </div>
-          {cardFormat === 'card' && (
-            <div>
-              {renderViewSection("Qualifications and Education", data.qualificationsAndEducation)}
-              {renderViewSection("Skills", data.skills)}
-              {renderViewSection("Strengths", data.strengths)}
-              {renderViewSection("Value Proposition", data.valueProposition)}
-            </div>
-          )}
-          {cardFormat === 'bullet' && (
+        <Section title={isNameSummary ? '' : title}>
+          {isNameSummary ? (
             <>
-              {renderViewSection("Qualifications and Education", data.qualificationsAndEducation)}
-              {renderViewSection("Skills", data.skills)}
-              {renderViewSection("Strengths", data.strengths)}
-              {renderViewSection("Value Proposition", data.valueProposition)}
+              <h2 className="text-2xl font-bold text-white mb-2">{data.name}</h2>
+              <p className="text-white">{data.summary}</p>
             </>
+          ) : format === 'bullet' ? (
+            <ul className="list-disc list-inside text-white">
+              {parseTags(content).map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+          ) : (
+            parseTags(content).map((item, index) => (
+              <span key={index} className="inline-block bg-white text-black rounded-full px-3 py-1 text-sm font-semibold mr-2 mb-2">
+                {item}
+              </span>
+            ))
           )}
-        </>
+        </Section>
       )
-    } else if (mode === 'edit' && cardFormat === 'card') {
+    } else if (mode === 'edit') {
+      if (isNameSummary) {
+        return (
+          <Section title="">
+            <Input
+              value={data.name}
+              onChange={(e) => handleDataChange({ name: e.target.value })}
+              className="mb-2 bg-white text-black"
+              placeholder="Name"
+            />
+            <Textarea
+              value={data.summary}
+              onChange={(e) => handleDataChange({ summary: e.target.value })}
+              className="w-full bg-white text-black p-2 rounded"
+              placeholder="Summary"
+            />
+          </Section>
+        )
+      }
       return (
-        <>
-          <div>
-            {renderEditCardSection("Name", "name", data.name)}
-            {renderEditCardSection("Summary", "summary", data.summary)}
-            {renderEditBulletSection("Goals", "goals")}
-            {renderEditBulletSection("Next Steps", "nextSteps")}
-            {renderEditBulletSection("Life Experiences", "lifeExperiences")}
-          </div>
-          <div>
-            {renderEditBulletSection("Qualifications and Education", "qualificationsAndEducation")}
-            {renderEditBulletSection("Skills", "skills")}
-            {renderEditBulletSection("Strengths", "strengths")}
-            {renderEditBulletSection("Value Proposition", "valueProposition")}
-          </div>
-        </>
-      )
-    } else {
-      return (
-        <div className="col-span-2">
-          {renderEditBulletSection("Name", "name")}
-          {renderEditBulletSection("Summary", "summary")}
-          {renderEditBulletSection("Goals", "goals")}
-          {renderEditBulletSection("Next Steps", "nextSteps")}
-          {renderEditBulletSection("Life Experiences", "lifeExperiences")}
-          {renderEditBulletSection("Qualifications and Education", "qualificationsAndEducation")}
-          {renderEditBulletSection("Skills", "skills")}
-          {renderEditBulletSection("Strengths", "strengths")}
-          {renderEditBulletSection("Value Proposition", "valueProposition")}
-        </div>
+        <Section title={title}>
+          <TagInput
+            tags={parseTags(content).map((text, id) => ({ id: id.toString(), text }))}
+            setTags={(newTags) => {
+              handleDataChange({ [title.toLowerCase().replace(/\s+/g, '')]: newTags.map(tag => tag.text) })
+            }}
+            placeholder="Add a tag"
+            styleClasses={{
+              input: 'w-full bg-white text-black p-2 rounded',
+              tag: 'bg-white text-black border border-gray-300',
+              tagText: 'text-black',
+              tagDeleteButton: 'text-black',
+            }}
+          />
+        </Section>
       )
     }
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Header
-        mode={mode}
-        onModeChange={handleModeChange}
-        lastAutoSave={lastAutoSave || ''}
-        onExport={handleExport}
-        onPersonaSelect={onPersonaSelect}
-        onBackToCards={onBackToCards}
-      />
-      <ControlBar
-        format={cardFormat}
-        onFormatChange={(newFormat) => {
-          setCardFormat(newFormat)
-          handleFormatChange(newFormat)
-        }}
-      />
-      <div className="bg-neutral-900 p-6 rounded-lg shadow">
-        <div className={`grid ${cardFormat === 'card' || mode === 'edit' ? 'grid-cols-2' : 'grid-cols-1'} gap-6`}>
-          {renderContent()}
+    <div className="bg-[#272B32] p-6 rounded-lg shadow">
+      <div className={`grid ${format === 'card' ? 'grid-cols-2' : 'grid-cols-1'} gap-6`}>
+        <div className={format === 'card' ? 'col-span-2' : ''}>
+          {renderContent("Name and Summary", '', true)}
         </div>
+        {renderContent("Goals", data.goals)}
+        {renderContent("Next Steps", data.nextSteps)}
+        {renderContent("Life Experiences", data.lifeExperiences)}
+        {renderContent("Qualifications and Education", data.qualificationsAndEducation)}
+        {renderContent("Skills", data.skills)}
+        {renderContent("Strengths", data.strengths)}
+        {renderContent("Value Proposition", data.valueProposition)}
       </div>
     </div>
   )
