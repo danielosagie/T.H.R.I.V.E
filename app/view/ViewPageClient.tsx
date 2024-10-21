@@ -53,7 +53,8 @@ export default function ViewPageClient() {
     const selected = personas.find(p => p.id === personaId)
     if (selected) {
       setSelectedPersona(selected)
-      localStorage.setItem('lastSelectedPersonaId', selected.id)
+      // Use type assertion to tell TypeScript that selected.id is a string
+      localStorage.setItem('lastSelectedPersonaId', selected.id as string)
     }
   }
 

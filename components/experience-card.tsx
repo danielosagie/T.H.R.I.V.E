@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react'
 import { Section } from './section'
-import { TagInput } from 'emblor'
+import { TagInput, Tag } from 'emblor'
 import { PersonaData } from '@/types/types'
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+
+type SetTagsFunction = (newTags: { id: string; text: string }[]) => void;
 
 interface ExperienceCardProps {
   initialData: PersonaData | null
@@ -16,17 +18,28 @@ interface ExperienceCardProps {
 }
 
 export function ExperienceCard({ initialData, persona, format, mode, onEdit }: ExperienceCardProps) {
-  const [data, setData] = useState<PersonaData>(persona || initialData || {
-    name: '',
-    summary: '',
-    goals: [],
-    nextSteps: [],
-    lifeExperiences: [],
-    qualificationsAndEducation: [],
-    skills: [],
-    strengths: [],
-    valueProposition: []
-  } as PersonaData)
+  const [data, setData] = useState<PersonaData>(() => {
+    if (persona) return persona;
+    if (initialData) return initialData;
+    
+    // Generate a unique ID for the default persona
+    const defaultId = `default-${Date.now()}`;
+    
+    return {
+      id: defaultId,
+      name: '',
+      summary: '',
+      goals: [],
+      nextSteps: [],
+      lifeExperiences: [],
+      qualificationsAndEducation: [],
+      skills: [],
+      strengths: [],
+      valueProposition: []
+    };
+  });
+
+  const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
 
   if (!data) {
     return (
@@ -94,19 +107,35 @@ export function ExperienceCard({ initialData, persona, format, mode, onEdit }: E
       }
       return (
         <Section title={title}>
-          <TagInput
-            tags={parseTags(content).map((text, id) => ({ id: id.toString(), text }))}
-            setTags={(newTags) => {
-              handleDataChange({ [title.toLowerCase().replace(/\s+/g, '')]: newTags.map(tag => tag.text) })
-            }}
-            placeholder="Add a tag"
-            styleClasses={{
-              input: 'w-full bg-white text-black p-2 rounded',
-              tag: 'bg-white text-black border border-gray-300',
-              tagText: 'text-black',
-              tagDeleteButton: 'text-black',
-            }}
-          />
+          <div className="h-full">
+            <TagInput
+              tags={parseTags(content).map((text, id) => ({ id: id.toString(), text }))}
+              setTags={(newTags) => {
+                const updateTags = (tags: Tag[]) => {
+                  handleDataChange({ [title.toLowerCase().replace(/\s+/g, '')]: tags.map(tag => tag.text) });
+                };
+
+                if (typeof newTags === 'function') {
+                  updateTags(newTags(parseTags(content).map((text, id) => ({ id: id.toString(), text }))));
+                } else {
+                  updateTags(newTags);
+                }
+              }}
+              placeholder="Add a tag"
+              styleClasses={{
+                input: 'w-full bg-white text-black p-2 rounded',
+                tag: { 
+                  body: 'bg-white text-black border border-gray-300 m-1',
+                  closeButton: 'text-black ml-2'
+                },
+                tagList: {
+                  container: 'flex flex-wrap gap-2 mb-2'
+                }
+              }}
+              activeTagIndex={activeTagIndex}
+              setActiveTagIndex={setActiveTagIndex}
+            />
+          </div>
         </Section>
       )
     }

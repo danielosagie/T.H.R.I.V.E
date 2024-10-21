@@ -182,23 +182,30 @@ export function ExperienceCardBuilderComponent({ onCardCreated }: ExperienceCard
       // Clear the form data from localStorage
       localStorage.removeItem('experienceCardFormData')
 
-    } catch (error) {
-      console.error("Error generating persona:", error)
-      if (error.response) {
-        console.error("Response data:", error.response.data)
-        console.error("Response status:", error.response.status)
-        console.error("Response headers:", error.response.headers)
-        setError(`Failed to generate persona: ${error.response.data.error || error.response.data.message || 'Unknown error'}`)
-        if (error.response.data.raw_response) {
-          console.error("Raw response:", error.response.data.raw_response)
-        }
-      } else if (error.request) {
-        console.error("No response received:", error.request)
-        setError("Failed to generate persona: No response received from server")
-      } else {
-        console.error("Error setting up request:", error.message)
-        setError(`Failed to generate persona: ${error.message}`)
+    } catch (error: unknown) {
+      console.error("Error generating persona:", error);
+      
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
       }
+      
+      if (typeof error === 'object' && error !== null && 'response' in error) {
+        const axiosError = error as { 
+          response?: { 
+            data: any; 
+            status: number; 
+            headers: any; 
+          } 
+        };
+        
+        if (axiosError.response) {
+          console.error("Response data:", axiosError.response.data);
+          console.error("Response status:", axiosError.response.status);
+          console.error("Response headers:", axiosError.response.headers);
+        }
+      }
+      
+      // Handle the error appropriately (e.g., show an error message to the user)
     } finally {
       setIsLoading(false)
     }

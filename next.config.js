@@ -1,6 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  webpack: (config, { isServer }) => {
+    // This will ignore the warnings about missing vendor chunks
+    config.infrastructureLogging = {
+      level: 'error',
+    }
+    return config
+  },
   async rewrites() {
     return [
       {

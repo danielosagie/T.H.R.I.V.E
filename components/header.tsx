@@ -16,16 +16,27 @@ interface HeaderProps {
   onExport: () => void
   onPersonaSelect: (persona: PersonaData) => void
   onBackToCards: () => void
+  personas: PersonaData[]
+  selectedPersona: PersonaData | null
 }
 
-export function Header({ 
+const Header: React.FC<HeaderProps> = ({ 
   mode, 
   onModeChange, 
   lastAutoSave, 
   onExport,
   onPersonaSelect,
-  onBackToCards
-}: HeaderProps) {
+  onBackToCards,
+  personas,
+  selectedPersona
+}) => {
+  const handlePersonaSelect = (personaId: string) => {
+    const selectedPersona = personas.find(persona => persona.id === personaId);
+    if (selectedPersona) {
+      onPersonaSelect(selectedPersona);
+    }
+  };
+
   return (
     <div className="space-y-4 pb-4 border-b border-gray-300">
       <div className="flex justify-between items-center">
@@ -45,7 +56,11 @@ export function Header({
         </Tabs>
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-500">Last autosave at {lastAutoSave}</span>
-          <PersonaSelector onPersonaSelect={onPersonaSelect} />
+          <PersonaSelector 
+            personas={personas}
+            selectedPersona={selectedPersona}
+            onPersonaSelect={handlePersonaSelect}
+          />
           <Button variant="outline" onClick={onBackToCards}>
             <ArrowLeftIcon className="mr-2 h-4 w-4" />
             Back to Cards
@@ -59,3 +74,5 @@ export function Header({
     </div>
   )
 }
+
+export default Header
