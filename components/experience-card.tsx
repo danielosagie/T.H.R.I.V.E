@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Section } from './section'
 import { TagInput, Tag } from 'emblor'
 import { PersonaData } from '@/types/types'
@@ -19,14 +19,14 @@ interface ExperienceCardProps {
 
 export function ExperienceCard({ initialData, persona, format, mode, onEdit }: ExperienceCardProps) {
   const [data, setData] = useState<PersonaData>(() => {
-    if (persona) return persona;
-    if (initialData) return initialData;
-    
-    // Generate a unique ID for the default persona
-    const defaultId = `default-${Date.now()}`;
-    
+    if (persona) {
+      return persona;
+    }
+    if (initialData) {
+      return initialData;
+    }
     return {
-      id: defaultId,
+      id: `default-${Date.now()}`,
       name: '',
       summary: '',
       goals: [],
@@ -38,6 +38,12 @@ export function ExperienceCard({ initialData, persona, format, mode, onEdit }: E
       valueProposition: []
     };
   });
+
+  useEffect(() => {
+    if (persona) {
+      setData(persona);
+    }
+  }, [persona]);
 
   const [activeTagIndex, setActiveTagIndex] = useState<number | null>(null);
 
@@ -78,11 +84,13 @@ export function ExperienceCard({ initialData, persona, format, mode, onEdit }: E
               ))}
             </ul>
           ) : (
-            parseTags(content).map((item, index) => (
-              <span key={index} className="inline-block bg-white text-black rounded-full px-3 py-1 text-sm font-semibold mr-2 mb-2">
-                {item}
-              </span>
-            ))
+            <div className="flex flex-wrap gap-1 sm:gap-2">
+              {parseTags(content).map((item, index) => (
+                <span key={index} className="tag">
+                  {item}
+                </span>
+              ))}
+            </div>
           )}
         </Section>
       )
@@ -142,9 +150,9 @@ export function ExperienceCard({ initialData, persona, format, mode, onEdit }: E
   }
 
   return (
-    <div className="bg-[#272B32] p-6 rounded-lg shadow">
-      <div className={`grid ${format === 'card' ? 'grid-cols-2' : 'grid-cols-1'} gap-6`}>
-        <div className={format === 'card' ? 'col-span-2' : ''}>
+    <div className="bg-[#272B32] p-4 sm:p-6 rounded-lg shadow">
+      <div className={`grid ${format === 'card' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-4 sm:gap-6`}>
+        <div className={format === 'card' ? 'col-span-1 sm:col-span-2' : ''}>
           {renderContent("Name and Summary", '', true)}
         </div>
         {renderContent("Goals", data.goals)}

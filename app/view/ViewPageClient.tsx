@@ -50,11 +50,16 @@ export default function ViewPageClient() {
   }, [newCardId])
 
   const handlePersonaSelect = (personaId: string) => {
-    const selected = personas.find(p => p.id === personaId)
+    const selected = personas.find(p => p.id === personaId);
     if (selected) {
-      setSelectedPersona(selected)
-      // Use type assertion to tell TypeScript that selected.id is a string
-      localStorage.setItem('lastSelectedPersonaId', selected.id as string)
+      setSelectedPersona(selected);
+      localStorage.setItem('lastSelectedPersonaId', selected.id);
+      
+      // Also update personas in localStorage if needed
+      const updatedPersonas = personas.map(p => 
+        p.id === selected.id ? selected : p
+      );
+      localStorage.setItem('personas', JSON.stringify(updatedPersonas));
     }
   }
 
@@ -108,32 +113,54 @@ export default function ViewPageClient() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="border-b border-gray-300">
+    <div className="flex flex-col w-full min-h-screen">
+      <header className="border-b w-full border-gray-300">
         <div className="container mx-auto px-4 py-4">
+          {/* Top row - Logo and Title */}
           <div className="flex justify-between items-center mb-4">
             <Link href="/" className="flex items-center space-x-2">
               <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
-              <span className="font-semibold">THRIVE Toolkit</span>
+              <span className="font-semibold text-sm sm:text-base">THRIVE Toolkit</span>
             </Link>
-            <h1 className="text-2xl font-bold absolute left-1/2 transform -translate-x-1/2">Experience Card</h1>
-            <div className="w-6 h-6" /> {/* Placeholder for symmetry */}
+            <h1 className="text-lg sm:text-2xl font-bold">Experience Card</h1>
+            <div className="w-6 h-6 hidden sm:block"></div>
           </div>
-          <div className="flex justify-between items-center">
-            <Tabs value={mode} onValueChange={(value) => setMode(value as 'view' | 'edit')}>
-              <TabsList>
-                <TabsTrigger value="edit">Edit</TabsTrigger>
-                <TabsTrigger value="view">View</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-500">Last autosave at {lastAutoSave}</span>
-              <PersonaSelector
-                personas={personas}
-                selectedPersona={selectedPersona}
-                onPersonaSelect={handlePersonaSelect}
-              />
-              <Button variant="outline" onClick={handleExport}>
+
+          {/* Controls row - with full width separation */}
+          <div className="w-full flex flex-col sm:flex-row sm:justify-between items-center space-y-4 sm:space-y-0">
+            {/* Left group */}
+            <div className="w-full sm:w-auto flex justify-between sm:justify-start items-center ">
+              <Tabs value={mode} onValueChange={(value) => setMode(value as 'view' | 'edit')}>
+                <TabsList className="h-10">
+                  <TabsTrigger value="edit">Edit</TabsTrigger>
+                  <TabsTrigger value="view">View</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              
+              <div className="block sm:hidden">
+                <PersonaSelector
+                  personas={personas}
+                  selectedPersona={selectedPersona}
+                  onPersonaSelect={handlePersonaSelect}
+                  className="w-[180px]"
+                />
+              </div>
+            </div>
+
+            {/* Right group */}
+            <div className="flex items-center space-x-4 ">
+              <span className="hidden sm:inline text-sm text-gray-500">
+                Last autosave at {lastAutoSave}
+              </span>
+              <div className="hidden sm:block">
+                <PersonaSelector
+                  personas={personas}
+                  selectedPersona={selectedPersona}
+                  onPersonaSelect={handlePersonaSelect}
+                  className="w-[180px]"
+                />
+              </div>
+              <Button variant="outline" onClick={handleExport} className="w-auto w-full sm:w-auto">
                 <DownloadIcon className="mr-2 h-4 w-4" />
                 Export
               </Button>
@@ -141,15 +168,34 @@ export default function ViewPageClient() {
           </div>
         </div>
       </header>
-      <div className="container mx-auto px-4 py-4">
-        <ControlBar
-          format={format}
-          onFormatChange={setFormat}
-        />
+
+      {/* Control bar with horizontal tabs */}
+      <div className="w-full ">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center my-4">
+            <h2 className="text-xl font-semibold">View Output</h2>
+            <Tabs value={format} onValueChange={setFormat}>
+              <TabsList className="h-10">
+                <TabsTrigger value="card">
+                  <span className="hidden sm:inline">Card Format</span>
+                  <span className="sm:hidden">Card</span>
+                </TabsTrigger>
+                <TabsTrigger value="bullet">
+                  <span className="hidden sm:inline">Bullet Format</span>
+                  <span className="sm:hidden">Bullet</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
       </div>
-      <main className="flex-grow container mx-auto px-4 py-8">
-        {renderContent()}
+
+      <main className="flex-grow w-full">
+        <div className="container mx-auto px-4 py-8">
+          {renderContent()}
+        </div>
       </main>
+      
       <Footer />
     </div>
   )

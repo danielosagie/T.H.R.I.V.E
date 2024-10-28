@@ -8,20 +8,23 @@ interface PersonaSelectorProps {
   onPersonaSelect: (personaId: string) => void
 }
 
-export const PersonaSelector: React.FC<PersonaSelectorProps> = ({ personas, selectedPersona, onPersonaSelect }) => {
+export function PersonaSelector({ personas, selectedPersona, onPersonaSelect }: PersonaSelectorProps) {
   return (
-    <Select onValueChange={onPersonaSelect} value={selectedPersona?.id}>
+    <Select
+      value={selectedPersona?.id}
+      onValueChange={onPersonaSelect}
+    >
       <SelectTrigger className="w-[180px]">
-        <SelectValue placeholder="Select a persona" />
+        <SelectValue placeholder="Select persona">
+          {selectedPersona?.name || "Select persona"}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {personas
-          .filter((persona): persona is PersonaData & { id: string } => persona.id !== undefined)
-          .map((persona) => (
-            <SelectItem key={persona.id} value={persona.id}>
-              {persona.name}
-            </SelectItem>
-          ))}
+        {personas.map((persona) => (
+          <SelectItem key={persona.id} value={persona.id}>
+            {persona.name}
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   )

@@ -59,9 +59,29 @@
   }
 }
 
+@layer base {
+  html {
+    min-width: 320px;
+    width: 100%;
+  }
+
+  body {
+    min-width: 320px;
+    width: 100%;
+  }
+
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
 @layer components {
   #root {
-    @apply max-w-[1280px] mx-auto p-8 text-center;
+    @apply w-full max-w-full mx-auto px-4;  /* Changed from fixed width */
   }
 
   .logo {
@@ -98,6 +118,50 @@
 
   .read-the-docs {
     @apply text-gray-500;
+  }
+
+  /* Card container responsive styles */
+  .experience-card {
+    @apply bg-[#272B32] rounded-lg shadow;
+    @apply p-3 sm:p-4 md:p-6;
+    @apply max-w-[95vw] mx-auto;
+  }
+
+  /* Section title responsive styles */
+  .section-title {
+    @apply text-base sm:text-lg md:text-xl font-semibold;
+    @apply mb-2 sm:mb-3;
+  }
+
+  /* Tag responsive styles */
+  .tag {
+    @apply inline-block bg-white text-black rounded-full font-semibold;
+    /* Mobile base styles */
+    @apply text-xs px-2 py-0.5 mr-1 mb-1;
+    /* Tablet/Desktop styles using responsive prefixes */
+    @apply sm:text-sm sm:px-3 sm:py-1 sm:mr-2 sm:mb-2;
+  }
+
+  /* Name and summary responsive styles */
+  .persona-name {
+    @apply text-lg sm:text-xl md:text-2xl font-bold;
+    @apply mb-1 sm:mb-2;
+  }
+
+  .persona-summary {
+    @apply text-sm sm:text-base;
+    @apply leading-tight sm:leading-normal;
+  }
+
+  /* Grid layout responsive styles */
+  .card-grid {
+    @apply grid gap-3 sm:gap-4 md:gap-6;
+    @apply grid-cols-1 md:grid-cols-2;
+  }
+
+  /* Section container styles */
+  .section-container {
+    @apply p-2 sm:p-3 md:p-4;
   }
 }
 

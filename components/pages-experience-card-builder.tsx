@@ -16,7 +16,7 @@ import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import { generatePersona } from '../lib/api'
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://tcard-vercel.onrender.com';
 
 const steps = [
   { title: "Introduction", description: "Getting to know you" },
@@ -149,7 +149,7 @@ export function ExperienceCardBuilderComponent({ onCardCreated }: ExperienceCard
         }
       })
 
-      const response = await axios.post(`${BACKEND_URL}/generate_persona_stream`, formDataToSend, {
+      const response = await axios.post(`${API_URL}/generate_persona_stream`, formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
