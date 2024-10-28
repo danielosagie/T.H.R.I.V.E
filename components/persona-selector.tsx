@@ -6,15 +6,16 @@ interface PersonaSelectorProps {
   personas: PersonaData[]
   selectedPersona: PersonaData | null
   onPersonaSelect: (personaId: string) => void
+  className?: string
 }
 
-export function PersonaSelector({ personas, selectedPersona, onPersonaSelect }: PersonaSelectorProps) {
+export function PersonaSelector({ personas, selectedPersona, onPersonaSelect, className }: PersonaSelectorProps) {
   return (
     <Select
       value={selectedPersona?.id}
       onValueChange={onPersonaSelect}
     >
-      <SelectTrigger className="w-[180px]">
+      <SelectTrigger className={className}>
         <SelectValue placeholder="Select persona">
           {selectedPersona?.name || "Select persona"}
         </SelectValue>

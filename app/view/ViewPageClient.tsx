@@ -178,7 +178,10 @@ export default function ViewPageClient() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center my-4">
             <h2 className="text-xl font-semibold">View Output</h2>
-            <Tabs value={format} onValueChange={setFormat}>
+            <Tabs 
+              value={format} 
+              onValueChange={(value) => setFormat(value as 'bullet' | 'card')}
+            >
               <TabsList className="h-10">
                 <TabsTrigger value="card">
                   <span className="hidden sm:inline">Card Format</span>
