@@ -8,7 +8,7 @@ interface TagProps {
 
 export function Tag({ children }: TagProps) {
   return (
-    <span className="inline-block bg-neutral-700 text-neutral-200 rounded-full px-3 py-1 text-sm font-semibold mr-2 mb-2">
+    <span className="inline-block bg-neutral-700 text-neutral-200 rounded-sm px-3 py-1 text-sm font-semibold mr-2 mb-2">
       {children}
     </span>
   )

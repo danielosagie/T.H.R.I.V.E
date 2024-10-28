@@ -135,7 +135,7 @@
 
   /* Tag responsive styles */
   .tag {
-    @apply inline-block bg-white text-black rounded-full font-semibold;
+    @apply inline-block bg-white text-black rounded-xl font-semibold;
     /* Mobile base styles */
     @apply text-xs px-2 py-0.5 mr-1 mb-1;
     /* Tablet/Desktop styles using responsive prefixes */

@@ -148,7 +148,7 @@ export default function ViewPageClient() {
             </div>
 
             {/* Right group */}
-            <div className="flex items-center space-x-4 ">
+            <div className="flex items-center space-x-4 w-full sm:w-auto">
               <span className="hidden sm:inline text-sm text-gray-500">
                 Last autosave at {lastAutoSave}
               </span>
@@ -160,7 +160,11 @@ export default function ViewPageClient() {
                   className="w-[180px]"
                 />
               </div>
-              <Button variant="outline" onClick={handleExport} className="w-auto w-full sm:w-auto">
+              <Button 
+                variant="outline" 
+                onClick={handleExport} 
+                className="w-full sm:w-auto"
+              >
                 <DownloadIcon className="mr-2 h-4 w-4" />
                 Export
               </Button>
