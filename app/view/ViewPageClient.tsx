@@ -87,7 +87,7 @@ export default function ViewPageClient() {
       return (
         <div className="text-center">
           <h3 className="text-xl font-semibold mb-4">No Experience Cards Found</h3>
-          <Button onClick={() => router.push('/experience-card-builder')}>
+          <Button onClick={() => router.push('/input')}>
             Create Experience Card
           </Button>
         </div>
