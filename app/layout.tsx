@@ -1,14 +1,13 @@
 import './globals.css'
 import { MyContextProvider } from './context/MyContext';
 import { Metadata } from 'next'
+import { ServerPing } from '@/components/server-ping';
 
 export const metadata: Metadata = {
-  title: 'Thrive Toolkit',
-  description: 'Empowering military spouses in their career journeys',
-  icons: [
-    { rel: 'icon', url: '/favicon.ico' },
-    { rel: 'icon', url: '/logo.svg', type: 'image/svg+xml' },
-  ],
+  title: 'THRIVE Toolkit',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({
@@ -22,6 +21,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
       </head>
       <body className="min-w-[320px]">
+        <ServerPing />
         <MyContextProvider>
           {children}
         </MyContextProvider>
