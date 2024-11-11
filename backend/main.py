@@ -61,15 +61,15 @@ agent = loop.run_until_complete(Agent.create("MainAgent", OLLAMA_BASE_URL, MODEL
 app = Flask(__name__)
 
 # Configure CORS
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {"origins": ["https://tcard.vercel.app", "http://localhost:3000"]}})
 
 @app.after_request
 def add_cors_headers(response):
     origin = request.headers.get('Origin')
     if origin in ['https://tcard.vercel.app', 'http://localhost:3000']:
-        response.headers.add('Access-Control-Allow-Origin', origin)
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers['Access-Control-Allow-Origin'] = origin
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
     return response
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -317,6 +317,171 @@ def get_all_personas():
 @app.route('/')
 def hello():
     return "Hello, World!"
+
+@app.route('/generate_star_bullets', methods=['POST', 'OPTIONS'])
+def generate_star_bullets():
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'success'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+        return response
+
+    try:
+        data = request.json
+        
+        # Extract STAR content and basic info
+        star_content = data.get('starContent', {})
+        basic_info = data.get('basicInfo', {})
+
+        system_prompt = """You are an expert-level employment readiness specialist, behavioral therapist, and HR professional. Your task is to review, evaluate, and enhance provided resume content to make it impactful and effective. When given resume input, transform it into optimized, high-quality bullet points that highlight clarity, context, action, and results without introducing unrelated or invented information. Each bullet should maintain relevance, use powerful action verbs, and include measurable outcomes where applicable. Your output should reflect professional resume bullet formatting, emphasizing succinct and impactful wording. 
+
+Ensure that:
+- Basic or underdeveloped content is improved with context, specificity, and quantifiable outcomes.
+- Already refined input is further enhanced for clarity and maximum impact.
+- All responses should remain concise, powerful, and relevant to the job role.
+
+Example Enhancement:
+Input: "Assisted customers with purchases and inquiries."
+Enhanced Bullet: "- Provided tailored customer assistance, addressing inquiries promptly and facilitating a seamless purchasing process, contributing to a 15% boost in customer satisfaction."
+
+Your response should maintain this format and approach.
+ """
+
+        input_prompt = f"""
+Review and enhance the provided resume content, transforming it into a strong, concise, but very impactful resume bullets. If the content is basic, improve it with context, measurable results, and clarity. If it is already improved, refine it for conciseness and impact. Keep the response formatted as resume-style bullet points, no sub-bullets but still impactful and telling of the full story. Here is the data you are making changes to:
+
+Company: {basic_info.get('company')}
+Position: {basic_info.get('position')}
+Industry: {basic_info.get('industry')}
+
+Situation: {star_content.get('situation')}
+Task: {star_content.get('task')}
+Action: {star_content.get('actions')}
+Result: {star_content.get('results')}
+
+Format the response as a JSON object with an array of bullet points:
+{{
+    "bullets": [
+        "Bullet point 1",
+        "Bullet point 2",
+        "Bullet point 3"
+    ]
+}}"""
+
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+        
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": input_prompt
+                }
+            ],
+            model="llama3-8b-8192",
+            temperature=0.7,
+            max_tokens=1000,
+            top_p=0.8,
+            stream=True
+        )
+
+        generated_response = ''
+        for chunk in chat_completion:
+            if chunk.choices[0].delta.content is not None:
+                generated_response += chunk.choices[0].delta.content
+
+        parsed_data = extract_json(generated_response)
+        
+        if parsed_data is None:
+            logging.error(f"Failed to parse generated bullets. Raw response: {generated_response}")
+            return jsonify({"error": "Failed to parse generated bullets", "raw_response": generated_response}), 500
+
+        return jsonify({"bullets": parsed_data.get("bullets", [])})
+
+    except Exception as e:
+        logging.error(f"Error in generate_star_bullets: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/star/recommendations', methods=['POST', 'OPTIONS'])
+def generate_star_recommendations():
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'success'})
+
+    try:
+        data = request.json
+        
+        system_prompt = """You are an expert-level employment readiness specialist, behavioral therapist, and HR professional. Your task is to review, evaluate, and enhance provided resume content to make it impactful and effective. When given resume input, transform it into optimized, high-quality bullet points that highlight clarity, context, action, and results without introducing unrelated or invented information. Each bullet should maintain relevance, use powerful action verbs, and include measurable outcomes where applicable. Your output should reflect professional resume bullet formatting, emphasizing succinct and impactful wording. 
+
+Ensure that:
+- Basic or underdeveloped content is improved with context, specificity, and quantifiable outcomes.
+- Already refined input is further enhanced for clarity and maximum impact.
+- All responses should remain concise, powerful, and relevant to the job role.
+
+Example Enhancement:
+Input: "Assisted customers with purchases and inquiries."
+Enhanced Bullet: "- Provided tailored customer assistance, addressing inquiries promptly and facilitating a seamless purchasing process, contributing to a 15% boost in customer satisfaction."
+
+Your response should maintain this format and approach.
+"""
+
+        input_prompt = f"""
+Given the user's STAR-based experience input, reformat it according to the STAR structure and provide detailed, high-value feedback as JSON arrays. For each STAR section, generate between 6-9 impactful recommendations that build upon one another, prioritizing suggestions that add measurable value.
+
+For each recommendation, provide the following:
+
+Title: A concise summary of the main idea.
+Subtitle: An explanation of why this change enhances the content.
+Original Content: The user’s initial input.
+Cumulative Improvements: Demonstrate iterative enhancements with key changes highlighted.
+
+Prioritize recommendations that focus on efficiency, clarity, and impact. If a section is already well-developed, note that further improvements aren’t necessary. Only include a recommendation if it contributes significant value:
+
+Company: {data.get('company')}
+Position: {data.get('position')}
+Industry: {data.get('industry')}
+
+Situation: {data.get('situation')}
+Task: {data.get('task')}
+Action: {data.get('actions')}
+Result: {data.get('results')}
+
+"""
+
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": input_prompt}
+            ],
+            model="llama3-8b-8192",
+            temperature=0.7,
+            max_tokens=1000,
+            top_p=0.8,
+            stream=True
+        )
+
+        generated_response = ''
+        for chunk in chat_completion:
+            if chunk.choices[0].delta.content is not None:
+                generated_response += chunk.choices[0].delta.content
+
+        parsed_data = extract_json(generated_response)
+        
+        if parsed_data is None:
+            logging.error(f"Failed to parse recommendations. Raw response: {generated_response}")
+            return jsonify({"error": "Failed to parse recommendations"}), 500
+
+        return jsonify({"recommendations": parsed_data})
+
+    except Exception as e:
+        logging.error(f"Error generating recommendations: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 # @app.teardown_appcontext
 # def shutdown_session(exception=None):

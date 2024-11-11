@@ -18,7 +18,7 @@ const Hero = () => {
             AI-powered tool assisting military spouses to self-reflect and translate their unique experiences and skills for career growth  
             </p>
             <div className="flex items-center gap-x-6">
-              <Link href="/input" passHref>
+              <Link href="/fork" passHref>
                 <Button size="lg">Create New</Button>
               </Link>
               <Link href="/view" passHref>
