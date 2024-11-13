@@ -434,10 +434,77 @@ Given the user's STAR-based experience input, reformat it according to the STAR 
 
 For each recommendation, provide the following:
 
-Title: A concise summary of the main idea.
-Subtitle: An explanation of why this change enhances the content.
-Original Content: The user’s initial input.
-Cumulative Improvements: Demonstrate iterative enhancements with key changes highlighted.
+Format the response as:
+{{
+    "situation": [
+        {{
+            "title": "Clear recommendation title",
+            "subtitle": "Brief explanation of the improvement",
+            "original_content": "Original text",
+            "examples": [
+                {{
+                    "content": "Improved version 1",
+                    "explanation": "Why this is better"
+                }},
+                {{
+                    "content": "Improved version 2",
+                    "explanation": "Why this is even better"
+                }}
+            ]
+        }}
+    ],
+    "task": [
+        {{
+            "title": "Clear recommendation title",
+            "subtitle": "Brief explanation of the improvement",
+            "original_content": "Original text",
+            "examples": [
+                {{
+                    "content": "Improved version 1",
+                    "explanation": "Why this is better"
+                }},
+                {{
+                    "content": "Improved version 2",
+                    "explanation": "Why this is even better"
+                }}
+            ]
+        }}
+    ],
+    "action": [
+        {{
+            "title": "Clear recommendation title",
+            "subtitle": "Brief explanation of the improvement",
+            "original_content": "Original text",
+            "examples": [
+                {{
+                    "content": "Improved version 1",
+                    "explanation": "Why this is better"
+                }},
+                {{
+                    "content": "Improved version 2",
+                    "explanation": "Why this is even better"
+                }}
+            ]
+        }}
+    ],
+    "result": [
+        {{
+            "title": "Clear recommendation title",
+            "subtitle": "Brief explanation of the improvement",
+            "original_content": "Original text",
+            "examples": [
+                {{
+                    "content": "Improved version 1",
+                    "explanation": "Why this is better"
+                }},
+                {{
+                    "content": "Improved version 2",
+                    "explanation": "Why this is even better"
+                }}
+            ]
+        }}
+    ]
+}}
 
 Prioritize recommendations that focus on efficiency, clarity, and impact. If a section is already well-developed, note that further improvements aren’t necessary. Only include a recommendation if it contributes significant value:
 

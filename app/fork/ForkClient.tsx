@@ -21,15 +21,16 @@ export default function ForkClient() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <Link href="/input" className="block transition-transform hover:scale-[1.02]">
-          <Card>
+          <Card className="h-fit">
             <CardContent className="p-6">
-              <div className="relative w-full h-[200px] mb-4">
+              <div className="relative w-full aspect-[4/3] max-w-[400px] mx-auto mb-4">
                 <Image 
                   src="/assets/exp.png" 
                   alt="Searcher Icon" 
                   fill
                   className="object-contain rounded-md"
                   priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
               </div>
               <h3 className="text-xl font-bold mb-2">New Job Seeker/Career Transitioner</h3>

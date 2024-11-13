@@ -1,7 +1,13 @@
 "use client"
+import React from "react"
+import StarBuilder from "../../components/star-builder"
 
-import { StarBuilderComponent } from "@/components/star-builder"
-
-export default function StarInputClient() {
-  return <StarBuilderComponent />
+const StarInputClient = () => {
+  return (
+    <div>
+      <StarBuilder />
+    </div>
+  )
 }
+
+export default StarInputClient

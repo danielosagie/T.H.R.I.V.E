@@ -1,32 +1,39 @@
+"use client"
+
+import * as React from "react"
+import { useToast } from "@/hooks/use-toast"
 import {
   Toast,
-  ToastClose,
-  ToastDescription,
   ToastProvider,
   ToastTitle,
+  ToastDescription,
+  ToastClose,
+  ToastAction,
   ToastViewport,
 } from "@/components/ui/toast"
-import { useToast } from "@/components/ui/use-toast"
+import { X } from "lucide-react"
 
 export function Toaster() {
-  const { toasts } = useToast()
+  const { toasts, dismiss } = useToast()
 
   return (
     <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        )
-      })}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          open={toast.open}
+          onOpenChange={(open) => {
+            if (!open) dismiss(toast.id)
+          }}
+        >
+          {toast.title && <ToastTitle>{toast.title}</ToastTitle>}
+          {toast.description && <ToastDescription>{toast.description}</ToastDescription>}
+          {toast.action && toast.action}
+          <ToastClose className="absolute top-2 right-2">
+            <X size={16} />
+          </ToastClose>
+        </Toast>
+      ))}
       <ToastViewport />
     </ToastProvider>
   )
