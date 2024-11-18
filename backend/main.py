@@ -384,7 +384,7 @@ Format the response as a JSON object with an array of bullet points:
             ],
             model="llama3-8b-8192",
             temperature=0.7,
-            max_tokens=1000,
+            max_tokens=2000,
             top_p=0.8,
             stream=True
         )

@@ -197,37 +197,12 @@ const StarBuilder: React.FC = () => {
     if (storedData) {
       const parsedData = JSON.parse(storedData)
       return {
+        ...initialState,
         ...parsedData,
-        currentStep: 0,
-        isGenerating: false
+        currentStep: parsedData.currentStep || 0
       }
     }
-    return {
-      currentStep: 0,
-      experienceType: null,
-      basicInfo: {
-        company: "",
-        position: "",
-        industry: "",
-        dateRange: {
-          startMonth: "",
-          startYear: "",
-          endMonth: "",
-          endYear: ""
-        }
-      },
-      starContent: {
-        situation: "",
-        task: "",
-        actions: "",
-        results: ""
-      },
-      recommendations: null,
-      generatedBullets: [],
-      activeSection: "situation",
-      isGenerating: false,
-      lastSaved: "Not saved yet"
-    }
+    return initialState
   })
 
   const [industrySearch, setIndustrySearch] = useState("")
@@ -235,6 +210,20 @@ const StarBuilder: React.FC = () => {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('starBuilderData', JSON.stringify({
+        experienceType: state.experienceType,
+        basicInfo: state.basicInfo,
+        starContent: state.starContent,
+        recommendations: state.recommendations,
+        generatedBullets: state.generatedBullets,
+        activeSection: state.activeSection,
+        lastSaved: new Date().toLocaleString()
+      }))
+    }
+  }, [state, mounted])
 
   const handleSimulateData = useCallback(() => {
     setState(prev => ({
@@ -252,7 +241,7 @@ const StarBuilder: React.FC = () => {
     }, 2000)
   }, [])
 
-  const handleGenerateRecommendations = useCallback(async () => {
+  const handleRegenerateRecommendations = useCallback(async () => {
     setState(prev => ({
       ...prev,
       isGenerating: true
@@ -283,14 +272,18 @@ const StarBuilder: React.FC = () => {
       setState(prev => ({
         ...prev,
         recommendations: data.recommendations,
-        isGenerating: false,
-        currentStep: prev.currentStep + 1
+        isGenerating: false
       }))
     } catch (error) {
-      console.error('Error generating recommendations:', error)
-      handleSimulateData()
+      console.error('Error regenerating recommendations:', error)
+      const recommendations = getRandomRecommendations()
+      setState(prev => ({
+        ...prev,
+        recommendations,
+        isGenerating: false
+      }))
     }
-  }, [state.basicInfo, state.starContent, handleSimulateData])
+  }, [state.basicInfo, state.starContent])
 
   const handleExperienceTypeSelect = useCallback((type: "work" | "volunteer" | "school") => {
     setState(prev => ({ ...prev, experienceType: type, currentStep: 1 }))
@@ -314,18 +307,22 @@ const StarBuilder: React.FC = () => {
   }, [])
 
   const handleGenerateBullets = useCallback(async () => {
-    setState(prev => ({ ...prev, isGenerating: true }))
-    handleNext()
+    setState(prev => ({ 
+      ...prev, 
+      isGenerating: true,
+      currentStep: prev.currentStep + 1,
+      generatedBullets: [] // Clear existing bullets
+    }))
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/star/bullets`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate_star_bullets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...state.basicInfo,
-          ...state.starContent,
+          basic_info: state.basicInfo,
+          star_content: state.starContent,
         }),
       })
 
@@ -336,27 +333,17 @@ const StarBuilder: React.FC = () => {
       const data = await response.json()
       setState(prev => ({
         ...prev,
-        generatedBullets: data.bullets || [],
-        isGenerating: false
+        isGenerating: false,
+        generatedBullets: data.bullets || []
       }))
-
-      // toast({
-      //   title: "Success",
-      //   description: "Your bullets have been generated successfully.",
-      //   duration: 2000,
-      // })
     } catch (error) {
       console.error("Error generating bullets:", error)
-      setState(prev => ({ ...prev, isGenerating: false }))
-      handleBack()
-      // toast({
-      //   title: "Error",
-      //   description: "Failed to generate bullets. Please try again.",
-      //   duration: 2000,
-      //   variant: "destructive",
-      // })
+      setState(prev => ({ 
+        ...prev, 
+        isGenerating: false
+      }))
     }
-  }, [state.basicInfo, state.starContent, handleNext, handleBack])
+  }, [state.basicInfo, state.starContent])
 
   const handleEditInput = useCallback(() => {
     // toast({
@@ -365,7 +352,7 @@ const StarBuilder: React.FC = () => {
     //   duration: 2000,
     // })
     setState(prev => ({ ...prev, currentStep: 1 }))
-  })
+  }, [])
 
   const handleCopyBullets = useCallback(() => {
     if (state.generatedBullets.length > 0) {
@@ -375,7 +362,6 @@ const StarBuilder: React.FC = () => {
   }, [state.generatedBullets])
 
   const handleRegenerateBullets = useCallback(() => {
-    // Remove toast notification
     setState(prev => ({
       ...prev,
       isGenerating: true
@@ -383,10 +369,19 @@ const StarBuilder: React.FC = () => {
 
     // Simulate API call with test data
     setTimeout(() => {
+      const recommendations = getRandomRecommendations();
+      // Combine all recommendations into bullets
+      const bullets = [
+        ...recommendations.situation.map(r => r.title),
+        ...recommendations.task.map(r => r.title),
+        ...recommendations.action.map(r => r.title),
+        ...recommendations.result.map(r => r.title)
+      ];
+
       setState(prev => ({
         ...prev,
         isGenerating: false,
-        generatedBullets: getRandomRecommendations().map(r => r.title)
+        generatedBullets: bullets
       }))
     }, 2000)
   }, [])
@@ -657,251 +652,10 @@ const StarBuilder: React.FC = () => {
     )
   }, [state.basicInfo, state.starContent, handleInputChange])
 
-  const renderRecommendations = () => (
-    <div className="space-y-6">
-      <h3 className="text-xl font-semibold">Review and Submit</h3>
-      <p className="text-gray-600">
-        See the STAR recommendations below and make any edits if necessary. 
-        Once you are happy with your STAR information, select Generate Bullets for your resume bullet content.
-      </p>
-      <div className="h-px bg-gray-200 my-6"></div>
-
-      <div className="bg-gray-50 rounded-md p-4 space-y-5">
-        <h4 className="text-md text-gray-700 font-semibold">Experience Details</h4>
-          
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="company" className="text-sm font-normal text-gray-700">Company</Label>
-            <Input id="company" name="company" value={state.basicInfo.company} onChange={handleInputChange} placeholder="Enter company name" />
-          </div>
-          <div>
-            <Label htmlFor="position" className="text-sm font-normal text-gray-700">Position Title</Label>
-            <Input id="position" name="position" value={state.basicInfo.position} onChange={handleInputChange} placeholder="Enter position title" />
-          </div>
-          <div>
-            <Label htmlFor="industry" className="text-sm font-normal text-gray-700">Industry</Label>
-            <Select 
-              onValueChange={(value) => setState(prev => ({ ...prev, basicInfo: { ...prev.basicInfo, industry: value } }))}
-              value={state.basicInfo.industry}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select industry" />
-              </SelectTrigger>
-              <SelectContent>
-                <Input 
-                  placeholder="Search industries..." 
-                  value={industrySearch}
-                  onChange={(e) => setIndustrySearch(e.target.value)}
-                  className="mb-2"
-                />
-                {industriesByCategory.map((category) => (
-                  <React.Fragment key={category.category}>
-                    <SelectItem value={category.category} disabled>
-                      {category.category}
-                    </SelectItem>
-                    {category.industries
-                      .filter(industry => 
-                        industry.toLowerCase().includes(industrySearch.toLowerCase())
-                      )
-                      .map((industry) => (
-                        <SelectItem key={industry} value={industry}>
-                          {industry}
-                        </SelectItem>
-                      ))
-                    }
-                  </React.Fragment>
-                ))}
-                {industrySearch && !industriesByCategory.some(category => 
-                  category.industries.some(industry => 
-                    industry.toLowerCase().includes(industrySearch.toLowerCase())
-                  )
-                ) && (
-                  <SelectItem value={industrySearch}>
-                    Other: {industrySearch}
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="startDate" className="text-sm font-normal text-gray-700">Start Date</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Select
-                value={state.basicInfo.dateRange.startMonth}
-                onValueChange={(value) => setState(prev => ({
-                  ...prev,
-                  basicInfo: {
-                    ...prev.basicInfo,
-                    dateRange: { ...prev.basicInfo.dateRange, startMonth: value }
-                  }
-                }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month) => (
-                    <SelectItem key={month} value={month}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={state.basicInfo.dateRange.startYear}
-                onValueChange={(value) => setState(prev => ({
-                  ...prev,
-                  basicInfo: {
-                    ...prev.basicInfo,
-                    dateRange: { ...prev.basicInfo.dateRange, startYear: value }
-                  }
-                }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="endDate" className="text-sm font-normal text-gray-700">End Date</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Select
-                value={state.basicInfo.dateRange.endMonth}
-                onValueChange={(value) => setState(prev => ({
-                  ...prev,
-                  basicInfo: {
-                    ...prev.basicInfo,
-                    dateRange: { ...prev.basicInfo.dateRange, endMonth: value }
-                  }
-                }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month) => (
-                    <SelectItem key={month} value={month}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={state.basicInfo.dateRange.endYear}
-                onValueChange={(value) => setState(prev => ({
-                  ...prev,
-                  basicInfo: {
-                    ...prev.basicInfo,
-                    dateRange: { ...prev.basicInfo.dateRange, endYear: value }
-                  }
-                }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        <h4 className="text-md text-gray-700 font-semibold">AI Recommendations</h4>
-        
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="situation" className="text-gray-700">Situation</Label>
-            <div className="space-y-4">
-              <Textarea 
-                id="situation" 
-                name="situation" 
-                value={state.starContent.situation} 
-                onChange={handleInputChange}
-                placeholder="The company was experiencing a decline in client retention..."
-              />
-              <SectionRecommendations 
-                section="situation"
-                recommendations={state.recommendations?.situation}
-                isLoading={state.isGenerating}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="task" className="text-gray-700">Task</Label>
-            <div className="space-y-4">
-            <Textarea 
-              id="task" 
-              name="task" 
-              value={state.starContent.task} 
-              onChange={handleInputChange}
-              placeholder="My role was to analyze the current processes..."
-            />
-            <SectionRecommendations 
-              section="task"
-              recommendations={state.recommendations?.task}
-              isLoading={state.isGenerating}
-            />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="actions" className="text-gray-700">Actions</Label>
-
-            <div className="space-y-4">
-              <Textarea 
-                id="actions" 
-                name="actions" 
-                value={state.starContent.actions} 
-                onChange={handleInputChange}
-                placeholder="Conducted in-depth data analysis..."
-              />
-              <SectionRecommendations 
-                section="action"
-                recommendations={state.recommendations?.action}
-                isLoading={state.isGenerating}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="results" className="text-gray-700">Result</Label>
-
-            <div className="space-y-4">
-              <Textarea 
-                id="results" 
-                name="results" 
-                value={state.starContent.results} 
-                onChange={handleInputChange}
-                placeholder="Increased client retention by 15%..."
-              />
-              <SectionRecommendations 
-                section="result"
-                recommendations={state.recommendations?.result}
-                isLoading={state.isGenerating}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-between items-center pt-4">
+  const renderRecommendations = useCallback(() => {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-end mb-4">
           <Button 
             variant="outline"
             onClick={handleSimulateData}
@@ -910,14 +664,278 @@ const StarBuilder: React.FC = () => {
             <Sparkles className="h-4 w-4" />
             Load Test Data
           </Button>
-          <Button onClick={handleGenerateBullets} className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            Generate Bullets
-          </Button>
         </div>
+        
+        {state.isGenerating ? (
+          <RecommendationsSkeleton />
+        ) : (
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold">Review and Submit</h3>
+            <p className="text-gray-600">
+              See the STAR recommendations below and make any edits if necessary. 
+              Once you are happy with your STAR information, select Generate Bullets for your resume bullet content.
+            </p>
+            <div className="h-px bg-gray-200 my-6"></div>
+
+            <div className="bg-gray-50 rounded-md p-4 space-y-5">
+              <h4 className="text-md text-gray-700 font-semibold">Experience Details</h4>
+                
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="company" className="text-sm font-normal text-gray-700">Company</Label>
+                  <Input id="company" name="company" value={state.basicInfo.company} onChange={handleInputChange} placeholder="Enter company name" />
+                </div>
+                <div>
+                  <Label htmlFor="position" className="text-sm font-normal text-gray-700">Position Title</Label>
+                  <Input id="position" name="position" value={state.basicInfo.position} onChange={handleInputChange} placeholder="Enter position title" />
+                </div>
+                <div>
+                  <Label htmlFor="industry" className="text-sm font-normal text-gray-700">Industry</Label>
+                  <Select 
+                    onValueChange={(value) => setState(prev => ({ ...prev, basicInfo: { ...prev.basicInfo, industry: value } }))}
+                    value={state.basicInfo.industry}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <Input 
+                        placeholder="Search industries..." 
+                        value={industrySearch}
+                        onChange={(e) => setIndustrySearch(e.target.value)}
+                        className="mb-2"
+                      />
+                      {industriesByCategory.map((category) => (
+                        <React.Fragment key={category.category}>
+                          <SelectItem value={category.category} disabled>
+                            {category.category}
+                          </SelectItem>
+                          {category.industries
+                            .filter(industry => 
+                              industry.toLowerCase().includes(industrySearch.toLowerCase())
+                            )
+                            .map((industry) => (
+                              <SelectItem key={industry} value={industry}>
+                                {industry}
+                              </SelectItem>
+                            ))
+                          }
+                        </React.Fragment>
+                      ))}
+                      {industrySearch && !industriesByCategory.some(category => 
+                        category.industries.some(industry => 
+                          industry.toLowerCase().includes(industrySearch.toLowerCase())
+                        )
+                      ) && (
+                        <SelectItem value={industrySearch}>
+                          Other: {industrySearch}
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startDate" className="text-sm font-normal text-gray-700">Start Date</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select
+                      value={state.basicInfo.dateRange.startMonth}
+                      onValueChange={(value) => setState(prev => ({
+                        ...prev,
+                        basicInfo: {
+                          ...prev.basicInfo,
+                          dateRange: { ...prev.basicInfo.dateRange, startMonth: value }
+                        }
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {months.map((month) => (
+                          <SelectItem key={month} value={month}>
+                            {month}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={state.basicInfo.dateRange.startYear}
+                      onValueChange={(value) => setState(prev => ({
+                        ...prev,
+                        basicInfo: {
+                          ...prev.basicInfo,
+                          dateRange: { ...prev.basicInfo.dateRange, startYear: value }
+                        }
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {years.map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endDate" className="text-sm font-normal text-gray-700">End Date</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select
+                      value={state.basicInfo.dateRange.endMonth}
+                      onValueChange={(value) => setState(prev => ({
+                        ...prev,
+                        basicInfo: {
+                          ...prev.basicInfo,
+                          dateRange: { ...prev.basicInfo.dateRange, endMonth: value }
+                        }
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {months.map((month) => (
+                          <SelectItem key={month} value={month}>
+                            {month}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={state.basicInfo.dateRange.endYear}
+                      onValueChange={(value) => setState(prev => ({
+                        ...prev,
+                        basicInfo: {
+                          ...prev.basicInfo,
+                          dateRange: { ...prev.basicInfo.dateRange, endYear: value }
+                        }
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {years.map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <h4 className="text-md text-gray-700 font-semibold">AI Recommendations</h4>
+              
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="situation" className="text-gray-700">Situation</Label>
+                  <div className="space-y-4">
+                    <Textarea 
+                      id="situation" 
+                      name="situation" 
+                      value={state.starContent.situation} 
+                      onChange={handleInputChange}
+                      placeholder="The company was experiencing a decline in client retention..."
+                    />
+                    <SectionRecommendations 
+                      section="situation"
+                      recommendations={state.recommendations?.situation}
+                      isLoading={state.isGenerating}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="task" className="text-gray-700">Task</Label>
+                  <div className="space-y-4">
+                  <Textarea 
+                    id="task" 
+                    name="task" 
+                    value={state.starContent.task} 
+                    onChange={handleInputChange}
+                    placeholder="My role was to analyze the current processes..."
+                  />
+                  <SectionRecommendations 
+                    section="task"
+                    recommendations={state.recommendations?.task}
+                    isLoading={state.isGenerating}
+                  />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="actions" className="text-gray-700">Actions</Label>
+
+                  <div className="space-y-4">
+                    <Textarea 
+                      id="actions" 
+                      name="actions" 
+                      value={state.starContent.actions} 
+                      onChange={handleInputChange}
+                      placeholder="Conducted in-depth data analysis..."
+                    />
+                    <SectionRecommendations 
+                      section="action"
+                      recommendations={state.recommendations?.action}
+                      isLoading={state.isGenerating}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="results" className="text-gray-700">Result</Label>
+
+                  <div className="space-y-4">
+                    <Textarea 
+                      id="results" 
+                      name="results" 
+                      value={state.starContent.results} 
+                      onChange={handleInputChange}
+                      placeholder="Increased client retention by 15%..."
+                    />
+                    <SectionRecommendations 
+                      section="result"
+                      recommendations={state.recommendations?.result}
+                      isLoading={state.isGenerating}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-4">
+                <Button 
+                  variant="outline"
+                  onClick={handleSimulateData}
+                  className="flex items-center gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Load Test Data
+                </Button>
+                <Button 
+                  onClick={handleRegenerateRecommendations} 
+                  className="flex items-center gap-2"
+                  disabled={state.isGenerating}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {state.isGenerating ? 'Regenerating...' : 'Regenerate Recommendations'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  )
+    )
+  }, [state.recommendations, handleSimulateData, handleRegenerateRecommendations, state.isGenerating])
 
   const renderGeneratedBullets = useCallback(() => {
     if (!mounted) return null
@@ -959,10 +977,20 @@ const StarBuilder: React.FC = () => {
                   Once you are happy with your information, click Complete Add Experience to save this experience
                 </p>
               </div>
-              <Button variant="outline" onClick={handleCopyBullets}>
-                <Copy className="mr-2 h-4 w-4" />
-                Copy
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleSimulateData}
+                  className="flex items-center gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Load Test Data
+                </Button>
+                <Button variant="outline" onClick={handleCopyBullets}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy
+                </Button>
+              </div>
             </div>
 
             <Card>
@@ -998,7 +1026,7 @@ const StarBuilder: React.FC = () => {
         )}
       </div>
     )
-  }, [mounted, state, handleEditInput, handleCopyBullets, handleRegenerateBullets, handleAddExperience, formatDate])
+  }, [mounted, state, handleEditInput, handleCopyBullets, handleRegenerateBullets, handleAddExperience, formatDate, handleSimulateData])
 
   const renderExport = () => (
     <div className="space-y-6">
@@ -1063,6 +1091,74 @@ const StarBuilder: React.FC = () => {
     )
   }
 
+  const handleRestart = useCallback(() => {
+    if (window.confirm('Are you sure you want to restart? This will clear all your progress.')) {
+      localStorage.removeItem('starBuilderData')
+      setState({
+        ...initialState,
+        lastSaved: "Not saved yet"
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (state.currentStep > 0) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [state.currentStep])
+
+  const handleGenerateRecommendations = useCallback(async () => {
+    // First move to next step and show loading state
+    setState(prev => ({
+      ...prev,
+      isGenerating: true,
+      currentStep: prev.currentStep + 1,
+      recommendations: {
+        situation: [],
+        task: [],
+        action: [],
+        result: []
+      }
+    }))
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/star/recommendations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          basic_info: state.basicInfo,
+          star_content: state.starContent,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate recommendations')
+      }
+
+      const data = await response.json()
+      setState(prev => ({
+        ...prev,
+        recommendations: data.recommendations,
+        isGenerating: false
+      }))
+    } catch (error) {
+      console.error('Error generating recommendations:', error)
+      // Keep user on the page, just show error state
+      setState(prev => ({
+        ...prev,
+        isGenerating: false
+      }))
+    }
+  }, [state.basicInfo, state.starContent])
+
   if (!mounted) {
     return null
   }
@@ -1077,9 +1173,14 @@ const StarBuilder: React.FC = () => {
               <span className="font-semibold">THRIVE Toolkit</span>
             </Link>
             <h2 className="text-2xl font-bold">Building Your STAR Bullets</h2>
-            <div className="text-sm text-neutral-500 dark:text-neutral-400">
-              Last saved: {state.lastSaved}
-            </div>
+            <Button 
+              variant="ghost" 
+              onClick={handleRestart}
+              className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Restart
+            </Button>
           </div>
           <div className="flex justify-between mt-4 px-8">
             {renderStepIndicator()}
@@ -1098,7 +1199,7 @@ const StarBuilder: React.FC = () => {
               </Button>
               {state.currentStep < steps.length - 1 && (
                 <Button 
-                  onClick={handleGenerateRecommendations}
+                  onClick={state.currentStep === 1 ? handleGenerateRecommendations : handleGenerateBullets}
                   disabled={state.isGenerating}
                 >
                   {state.isGenerating ? (
@@ -1106,7 +1207,9 @@ const StarBuilder: React.FC = () => {
                   ) : (
                     <>
                       <Sparkles className="mr-2 h-4 w-4" />
-                      Generate Recommendations
+                      {state.currentStep === 1 && "Generate Recommendations"}
+                      {state.currentStep === 2 && "Generate Bullets"}
+                      {state.currentStep === 3 && "Export Work"}
                     </>
                   )}
                 </Button>
