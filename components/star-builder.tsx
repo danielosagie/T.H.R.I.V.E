@@ -231,24 +231,37 @@ const StarBuilder: React.FC = () => {
       isGenerating: true
     }))
 
-    setTimeout(() => {
+    try {
+      // Use test data immediately
+      const recommendations = getRandomRecommendations()
       setState(prev => ({
         ...prev,
-        recommendations: getRandomRecommendations(),
-        isGenerating: false,
-        currentStep: prev.currentStep + 1
+        recommendations,
+        isGenerating: false
       }))
-    }, 2000)
+    } catch (error) {
+      console.error('Error loading test data:', error)
+      setState(prev => ({
+        ...prev,
+        isGenerating: false
+      }))
+    }
   }, [])
 
   const handleRegenerateRecommendations = useCallback(async () => {
     setState(prev => ({
       ...prev,
-      isGenerating: true
+      isGenerating: true,
+      recommendations: {
+        situation: [],
+        task: [],
+        action: [],
+        result: []
+      }
     }))
 
     try {
-      const response = await fetch('/api/recommendations', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/star/recommendations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -265,7 +278,7 @@ const StarBuilder: React.FC = () => {
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error('Failed to generate recommendations')
       }
 
       const data = await response.json()
@@ -275,13 +288,15 @@ const StarBuilder: React.FC = () => {
         isGenerating: false
       }))
     } catch (error) {
-      console.error('Error regenerating recommendations:', error)
-      const recommendations = getRandomRecommendations()
+      console.error('Error generating recommendations using test data:', error)
+      // Load test data on error
+      
       setState(prev => ({
         ...prev,
-        recommendations,
+        recommendations: getRandomRecommendations(),
         isGenerating: false
       }))
+    
     }
   }, [state.basicInfo, state.starContent])
 
@@ -399,6 +414,21 @@ const StarBuilder: React.FC = () => {
     if (!month || !year) return ""
     return `${month} ${year}`
   }, [])
+
+  const handleDownloadBullets = useCallback(() => {
+    if (state.generatedBullets.length > 0) {
+      const content = state.generatedBullets.join('\n\n')
+      const blob = new Blob([content], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${state.basicInfo.company}_${state.basicInfo.position}_bullets.txt`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }
+  }, [state.generatedBullets, state.basicInfo])
 
   const renderExperienceTypeSelection = () => (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -655,16 +685,6 @@ const StarBuilder: React.FC = () => {
   const renderRecommendations = useCallback(() => {
     return (
       <div className="space-y-4">
-        <div className="flex justify-end mb-4">
-          <Button 
-            variant="outline"
-            onClick={handleSimulateData}
-            className="flex items-center gap-2"
-          >
-            <Sparkles className="h-4 w-4" />
-            Load Test Data
-          </Button>
-        </div>
         
         {state.isGenerating ? (
           <RecommendationsSkeleton />
@@ -915,20 +935,30 @@ const StarBuilder: React.FC = () => {
               <div className="flex justify-between items-center pt-4">
                 <Button 
                   variant="outline"
-                  onClick={handleSimulateData}
-                  className="flex items-center gap-2"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Load Test Data
-                </Button>
-                <Button 
-                  onClick={handleRegenerateRecommendations} 
-                  className="flex items-center gap-2"
-                  disabled={state.isGenerating}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {state.isGenerating ? 'Regenerating...' : 'Regenerate Recommendations'}
-                </Button>
+              onClick={handleSimulateData}
+              className="flex items-center gap-2"
+              disabled={state.isGenerating}
+            >
+              <Sparkles className="h-4 w-4" />
+              Load Test Data
+            </Button>
+            <Button 
+              onClick={handleRegenerateRecommendations} 
+              className="flex items-center gap-2"
+              disabled={state.isGenerating}
+            >
+              {state.isGenerating ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Regenerating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Regenerate Recommendations
+                </>
+              )}
+            </Button>
               </div>
             </div>
           </div>
@@ -953,12 +983,12 @@ const StarBuilder: React.FC = () => {
                   <h3 className="text-lg font-semibold">{state.basicInfo.position || 'Position'}</h3>
                   <p className="text-gray-500">{state.basicInfo.company || 'Company'}</p>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="h-full flex flex-col justify-between items-end space-y-4">
+                  <Pencil className="h-4 w-4" />
                   <p className="text-sm text-gray-500">
                     {formatDate(state.basicInfo.dateRange.startMonth, state.basicInfo.dateRange.startYear)} - {' '}
                     {formatDate(state.basicInfo.dateRange.endMonth, state.basicInfo.dateRange.endYear) || 'Present'}
                   </p>
-                  <Pencil className="h-4 w-4" />
                 </div>
               </div>
             </CardContent>
@@ -978,14 +1008,6 @@ const StarBuilder: React.FC = () => {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={handleSimulateData}
-                  className="flex items-center gap-2"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Load Test Data
-                </Button>
                 <Button variant="outline" onClick={handleCopyBullets}>
                   <Copy className="mr-2 h-4 w-4" />
                   Copy
@@ -1017,10 +1039,14 @@ const StarBuilder: React.FC = () => {
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Regenerate Bullets
               </Button>
-              <Button onClick={handleAddExperience}>
-                <FileText className="mr-2 h-4 w-4" />
-                Add Experience
-              </Button>
+              <Button 
+                  variant="outline" 
+                  onClick={handleSimulateData}
+                  className="flex items-center gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Load Test Data
+                </Button>
             </div>
           </div>
         )}
@@ -1031,17 +1057,42 @@ const StarBuilder: React.FC = () => {
   const renderExport = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Export Your Work</h2>
-      <div className="bg-gray-100 p-4 rounded">
-        <h3 className="text-xl font-semibold mb-2">{state.basicInfo.position} at {state.basicInfo.company}</h3>
-        <p className="text-sm text-gray-500 mb-4">
-          {state.basicInfo.dateRange.startMonth} {state.basicInfo.dateRange.startYear} - 
-          {state.basicInfo.dateRange.endMonth} {state.basicInfo.dateRange.endYear}
-        </p>
-        <ul className="list-disc list-inside space-y-2">
-          {state.generatedBullets.map((bullet, index) => (
-            <li key={index}>{bullet}</li>
-          ))}
-        </ul>
+      <div className="bg-gray-100 p-4 rounded space-y-5">
+        <Card className="relative hover:bg-gray-50 transition-colors cursor-pointer" onClick={handleEditInput}>
+          <CardContent className="p-6">
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold">{state.basicInfo.position || 'Position'}</h3>
+                <p className="text-gray-500">{state.basicInfo.company || 'Company'}</p>
+              </div>
+              <div className="h-full flex flex-col justify-between items-end space-y-4">
+                <Pencil className="h-4 w-4" />
+                <p className="text-sm text-gray-500">
+                  {formatDate(state.basicInfo.dateRange.startMonth, state.basicInfo.dateRange.startYear)} - {' '}
+                  {formatDate(state.basicInfo.dateRange.endMonth, state.basicInfo.dateRange.endYear) || 'Present'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="relative hover:bg-gray-50 transition-colors cursor-pointer" onClick={handleEditInput}>
+          <CardContent className="p-6">
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold">{state.basicInfo.position || 'Position'}</h3>
+                <p className="text-gray-500">{state.basicInfo.company || 'Company'}</p>
+              </div>
+              <div className="h-full flex flex-col justify-between items-end space-y-4">
+                <Pencil className="h-4 w-4" />
+                <p className="text-sm text-gray-500">
+                  {formatDate(state.basicInfo.dateRange.startMonth, state.basicInfo.dateRange.startYear)} - {' '}
+                  {formatDate(state.basicInfo.dateRange.endMonth, state.basicInfo.dateRange.endYear) || 'Present'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       <Button onClick={handleDownloadBullets}>
         <Download className="mr-2 h-4 w-4" />
@@ -1203,13 +1254,21 @@ const StarBuilder: React.FC = () => {
                   disabled={state.isGenerating}
                 >
                   {state.isGenerating ? (
-                    <>Generating...</>
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
                   ) : (
                     <>
-                      <Sparkles className="mr-2 h-4 w-4" />
+                      {state.currentStep !== 3 && <Sparkles className="mr-2 h-4 w-4" />}
                       {state.currentStep === 1 && "Generate Recommendations"}
                       {state.currentStep === 2 && "Generate Bullets"}
-                      {state.currentStep === 3 && "Export Work"}
+                      {state.currentStep === 3 && (
+                        <>
+                          <FileText className="mr-2 h-4 w-4" />
+                          Save Experience
+                        </>
+                      )}
                     </>
                   )}
                 </Button>

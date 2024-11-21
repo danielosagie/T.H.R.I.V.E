@@ -50,13 +50,14 @@ export default function ForkClient() {
         <Link href="/star" className="block transition-transform hover:scale-[1.02]">
           <Card>
             <CardContent className="p-6">
-              <div className="relative w-full h-[200px] mb-4">
+              <div className="relative w-full aspect-[4/3] max-w-[400px] mx-auto mb-4">
                 <Image 
                   src="/assets/star.png" 
                   alt="Experienced Professional Icon" 
                   fill
                   className="object-contain rounded-md"
                   priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" 
                 />
               </div>
               <h3 className="text-xl font-bold mb-2">Experienced and Looking to Grow</h3>
