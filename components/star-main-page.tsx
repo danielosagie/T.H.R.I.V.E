@@ -27,7 +27,7 @@ interface Experience {
 
 export function StarMainPage() {
   const [experiences, setExperiences] = useState<Experience[]>([])
-  const [activeTab, setActiveTab] = useState('work')
+  const [activeTab, setActiveTab] = useState<'all' | 'work' | 'volunteer' | 'school'>('all')
   const [isExporting, setIsExporting] = useState(false)
   const router = useRouter()
 
@@ -39,7 +39,7 @@ export function StarMainPage() {
   }, [])
 
   const filteredExperiences = experiences.filter(exp => 
-    activeTab === 'review' ? true : exp.type === activeTab
+    activeTab === 'all' ? true : exp.type === activeTab
   )
 
   const selectedCount = experiences.filter(exp => exp.selected).length
@@ -113,9 +113,9 @@ export function StarMainPage() {
           <div>
             <h2 className="text-2xl font-bold mb-4">Your STAR Experiences</h2>
             <div className="flex justify-between items-center">
-              <Tabs defaultValue="review" value={activeTab} onValueChange={setActiveTab}>
+              <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
-                  <TabsTrigger value="review">All</TabsTrigger>
+                  <TabsTrigger value="all">All</TabsTrigger>
                   <TabsTrigger value="work">Work</TabsTrigger>
                   <TabsTrigger value="volunteer">Volunteer</TabsTrigger>
                   <TabsTrigger value="school">School</TabsTrigger>
@@ -134,7 +134,7 @@ export function StarMainPage() {
               <Card 
                 key={experience.id} 
                 className={`p-4 ${
-                  experience.selected ? "border-primary" : "border-transparent"
+                  experience.selected ? "border-primary" : "border-light-gray"
                 } hover:border-primary transition-colors duration-200`}
               >
                 <div className="relative">
