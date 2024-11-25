@@ -17,6 +17,9 @@ import { BulletsSkeleton } from "./bullets-skeleton"
 import { IndustrySelect } from "./industry-select"
 import { SectionRecommendations } from "./section-recommendations"
 import { getRandomRecommendations } from "@/lib/sample-data"
+import { useRouter } from "next/navigation"
+import { MinimalTiptapEditor } from '@/components/minimal-tiptap'
+import { Content } from '@tiptap/react'
 
 interface Industry {
   category: string;
@@ -112,7 +115,6 @@ const steps = [
   { title: "Add Experience", description: "Enter STAR details" },
   { title: "Review Improvements", description: "Check AI suggestions" },
   { title: "Review Bullets", description: "Finalize your bullets" },
-  { title: "End Bullets", description: "Export your work" },
 ]
 
 const months = [
@@ -190,6 +192,12 @@ interface Recommendation {
   examples: Example[]
 }
 
+const getRandomGradient = () => {
+  const hue1 = Math.floor(Math.random() * 360);
+  const hue2 = (hue1 + 30) % 360;
+  return `linear-gradient(135deg, hsl(${hue1}, 70%, 80%) 0%, hsl(${hue2}, 70%, 80%) 100%)`;
+};
+
 const StarBuilder: React.FC = () => {
   const [mounted, setMounted] = useState(false)
   const [state, setState] = useState<StarBuilderState>(() => {
@@ -206,6 +214,8 @@ const StarBuilder: React.FC = () => {
   })
 
   const [industrySearch, setIndustrySearch] = useState("")
+
+  const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
@@ -326,7 +336,7 @@ const StarBuilder: React.FC = () => {
       ...prev, 
       isGenerating: true,
       currentStep: prev.currentStep + 1,
-      generatedBullets: [] // Clear existing bullets
+      generatedBullets: []
     }))
 
     try {
@@ -346,11 +356,27 @@ const StarBuilder: React.FC = () => {
       }
 
       const data = await response.json()
-      setState(prev => ({
-        ...prev,
-        isGenerating: false,
-        generatedBullets: data.bullets || []
-      }))
+      
+      // Save the experience to localStorage
+      const savedExperiences = localStorage.getItem('starExperiences')
+      const experiences = savedExperiences ? JSON.parse(savedExperiences) : []
+      
+      const newExperience = {
+        id: Date.now(),
+        title: state.basicInfo.position,
+        company: state.basicInfo.company,
+        type: state.experienceType,
+        dateRange: state.basicInfo.dateRange,
+        bullets: data.bullets,
+        starContent: state.starContent
+      }
+
+      experiences.push(newExperience)
+      localStorage.setItem('starExperiences', JSON.stringify(experiences))
+
+      // Navigate to the star page
+      router.push('/star')
+
     } catch (error) {
       console.error("Error generating bullets:", error)
       setState(prev => ({ 
@@ -358,7 +384,7 @@ const StarBuilder: React.FC = () => {
         isGenerating: false
       }))
     }
-  }, [state.basicInfo, state.starContent])
+  }, [state.basicInfo, state.starContent, router])
 
   const handleEditInput = useCallback(() => {
     // toast({
@@ -971,7 +997,7 @@ const StarBuilder: React.FC = () => {
     if (!mounted) return null
 
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Edit Your Input</h2>
           <p className="text-gray-600">If you want to make edits to your input, click below to go back to form.</p>
@@ -1018,13 +1044,23 @@ const StarBuilder: React.FC = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="space-y-2">
-                  <Textarea 
-                    className="min-h-[200px]"
+                  <MinimalTiptapEditor
                     value={state.generatedBullets.join("\n")}
-                    onChange={(e) => setState(prev => ({ 
-                      ...prev, 
-                      generatedBullets: e.target.value.split("\n").filter(Boolean)
-                    }))}
+                    onChange={(newContent) => {
+                      setState(prev => ({ 
+                        ...prev, 
+                        generatedBullets: String(newContent)
+                          .split("\n")
+                          .filter(Boolean)
+                      }))
+                    }}
+                    className="w-full"
+                    editorContentClassName="min-h-[200px] p-4"
+                    output="text"
+                    placeholder="Edit your STAR bullets here..."
+                    autofocus={true}
+                    editable={true}
+                    editorClassName="focus:outline-none"
                   />
                 </div>
               </CardContent>
@@ -1054,53 +1090,6 @@ const StarBuilder: React.FC = () => {
     )
   }, [mounted, state, handleEditInput, handleCopyBullets, handleRegenerateBullets, handleAddExperience, formatDate, handleSimulateData])
 
-  const renderExport = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Export Your Work</h2>
-      <div className="bg-gray-100 p-4 rounded space-y-5">
-        <Card className="relative hover:bg-gray-50 transition-colors cursor-pointer" onClick={handleEditInput}>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <h3 className="text-lg font-semibold">{state.basicInfo.position || 'Position'}</h3>
-                <p className="text-gray-500">{state.basicInfo.company || 'Company'}</p>
-              </div>
-              <div className="h-full flex flex-col justify-between items-end space-y-4">
-                <Pencil className="h-4 w-4" />
-                <p className="text-sm text-gray-500">
-                  {formatDate(state.basicInfo.dateRange.startMonth, state.basicInfo.dateRange.startYear)} - {' '}
-                  {formatDate(state.basicInfo.dateRange.endMonth, state.basicInfo.dateRange.endYear) || 'Present'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative hover:bg-gray-50 transition-colors cursor-pointer" onClick={handleEditInput}>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <h3 className="text-lg font-semibold">{state.basicInfo.position || 'Position'}</h3>
-                <p className="text-gray-500">{state.basicInfo.company || 'Company'}</p>
-              </div>
-              <div className="h-full flex flex-col justify-between items-end space-y-4">
-                <Pencil className="h-4 w-4" />
-                <p className="text-sm text-gray-500">
-                  {formatDate(state.basicInfo.dateRange.startMonth, state.basicInfo.dateRange.startYear)} - {' '}
-                  {formatDate(state.basicInfo.dateRange.endMonth, state.basicInfo.dateRange.endYear) || 'Present'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      <Button onClick={handleDownloadBullets}>
-        <Download className="mr-2 h-4 w-4" />
-        Export to PDF
-      </Button>
-    </div>
-  )
-
   const renderCurrentStep = () => {
     switch (state.currentStep) {
       case 0:
@@ -1111,8 +1100,6 @@ const StarBuilder: React.FC = () => {
         return renderRecommendations()
       case 3:
         return renderGeneratedBullets()
-      case 4:
-        return renderExport()
       default:
         return <div>Step not implemented yet</div>
     }
@@ -1210,6 +1197,34 @@ const StarBuilder: React.FC = () => {
     }
   }, [state.basicInfo, state.starContent])
 
+  const handleSaveExperience = useCallback(() => {
+    // Create a new experience object with the gradient
+    const newExperience = {
+      id: Date.now(),
+      title: state.basicInfo.position,
+      company: state.basicInfo.company,
+      type: state.experienceType,
+      dateRange: state.basicInfo.dateRange,
+      bullets: state.generatedBullets,
+      starContent: state.starContent,
+      selected: false,
+      gradient: getRandomGradient()
+    }
+
+    // Get existing experiences from localStorage
+    const savedExperiences = localStorage.getItem('starExperiences')
+    const experiences = savedExperiences ? JSON.parse(savedExperiences) : []
+    
+    // Add new experience
+    experiences.push(newExperience)
+    
+    // Save back to localStorage
+    localStorage.setItem('starExperiences', JSON.stringify(experiences))
+
+    // Navigate to star page
+    router.push('/star')
+  }, [state, router])
+
   if (!mounted) {
     return null
   }
@@ -1248,7 +1263,7 @@ const StarBuilder: React.FC = () => {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              {state.currentStep < steps.length - 1 && (
+              {state.currentStep < steps.length - 1 ? (
                 <Button 
                   onClick={state.currentStep === 1 ? handleGenerateRecommendations : handleGenerateBullets}
                   disabled={state.isGenerating}
@@ -1260,17 +1275,19 @@ const StarBuilder: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      {state.currentStep !== 3 && <Sparkles className="mr-2 h-4 w-4" />}
+                      <Sparkles className="mr-2 h-4 w-4" />
                       {state.currentStep === 1 && "Generate Recommendations"}
                       {state.currentStep === 2 && "Generate Bullets"}
-                      {state.currentStep === 3 && (
-                        <>
-                          <FileText className="mr-2 h-4 w-4" />
-                          Save Experience
-                        </>
-                      )}
                     </>
                   )}
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSaveExperience}
+                  disabled={state.isGenerating}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Save Experience
                 </Button>
               )}
             </div>

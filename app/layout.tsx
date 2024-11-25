@@ -2,6 +2,10 @@ import './globals.css'
 import { MyContextProvider } from './context/MyContext';
 import { Metadata } from 'next'
 import { ServerPing } from '@/components/server-ping';
+import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
+import { extractRouterConfig } from "uploadthing/server";
+import { ourFileRouter } from "./api/uploadthing/core";
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 export const metadata: Metadata = {
   title: 'THRIVE Toolkit',
@@ -23,7 +27,12 @@ export default function RootLayout({
       <body className="min-w-[320px]">
         <ServerPing />
         <MyContextProvider>
-          {children}
+          <NextSSRPlugin 
+            routerConfig={extractRouterConfig(ourFileRouter)}
+          />
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
         </MyContextProvider>
       </body>
     </html>

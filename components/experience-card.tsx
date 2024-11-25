@@ -56,7 +56,8 @@ export function ExperienceCard({ initialData, persona, format, mode, onEdit }: E
     )
   }
 
-  const parseTags = (content: string | string[]): string[] => {
+  const formatContent = (content: string | string[] | undefined): string[] => {
+    if (!content) return []
     if (typeof content === 'string') {
       return content.split(', ').filter(Boolean)
     }
@@ -79,13 +80,13 @@ export function ExperienceCard({ initialData, persona, format, mode, onEdit }: E
             </>
           ) : format === 'bullet' ? (
             <ul className="list-disc list-inside text-white">
-              {parseTags(content).map((item, index) => (
+              {formatContent(content).map((item, index) => (
                 <li key={index}>{item}</li>
               ))}
             </ul>
           ) : (
             <div className="flex flex-wrap gap-1 sm:gap-2">
-              {parseTags(content).map((item, index) => (
+              {formatContent(content).map((item, index) => (
                 <span key={index} className="tag">
                   {item}
                 </span>
@@ -117,14 +118,14 @@ export function ExperienceCard({ initialData, persona, format, mode, onEdit }: E
         <Section title={title}>
           <div className="h-full">
             <TagInput
-              tags={parseTags(content).map((text, id) => ({ id: id.toString(), text }))}
+              tags={formatContent(content).map((text, id) => ({ id: id.toString(), text }))}
               setTags={(newTags) => {
                 const updateTags = (tags: Tag[]) => {
                   handleDataChange({ [title.toLowerCase().replace(/\s+/g, '')]: tags.map(tag => tag.text) });
                 };
 
                 if (typeof newTags === 'function') {
-                  updateTags(newTags(parseTags(content).map((text, id) => ({ id: id.toString(), text }))));
+                  updateTags(newTags(formatContent(content).map((text, id) => ({ id: id.toString(), text }))));
                 } else {
                   updateTags(newTags);
                 }

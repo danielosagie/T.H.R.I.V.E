@@ -1,11 +1,8 @@
-import type { Metadata } from 'next';
-import ExportPageClient from './ExportPageClient';
+import { ExportPageComponent } from "@/components/export-page"
+import { getExperienceData } from "@/lib/data"
 
-export const metadata: Metadata = {
-  title: 'Export Page',
-  description: 'Export your data',
-}
-
-export default function ExportPage() {
-  return <ExportPageClient />
+export default async function ExportPage() {
+  const experienceData = await getExperienceData()
+  
+  return <ExportPageComponent experienceData={experienceData} />
 }

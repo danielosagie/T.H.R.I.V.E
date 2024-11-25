@@ -47,7 +47,7 @@ export default function ForkClient() {
           </Card>
         </Link>
 
-        <Link href="/star" className="block transition-transform hover:scale-[1.02]">
+        <Link href="/starinput" className="block transition-transform hover:scale-[1.02]">
           <Card>
             <CardContent className="p-6">
               <div className="relative w-full aspect-[4/3] max-w-[400px] mx-auto mb-4">

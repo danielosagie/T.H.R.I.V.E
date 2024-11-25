@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ExperienceCard } from "@/components/experience-card"
+import { StarExperienceCard } from "@/components/star-experience-card"
 import { PersonaData } from "@/types/types"
 import { GradientPicker } from "@/components/app-picker-gradient-picker"
 import html2canvas from "html2canvas"
@@ -13,13 +13,29 @@ import { saveAs } from "file-saver"
 import { useRouter } from "next/navigation"
 import { getExperienceData } from "@/lib/data"
 
-export function ExportPageComponent() {
+interface Experience {
+  id: number
+  title: string
+  company: string
+  type: 'work' | 'volunteer' | 'school'
+  dateRange: {
+    startMonth: string
+    startYear: string
+    endMonth: string
+    endYear: string
+  }
+  bullets: string[]
+  selected: boolean
+}
+
+export function StarExportPage() {
   const router = useRouter()
   const [background, setBackground] = useState<string>("linear-gradient(to top left,#accbee,#e7f0fd)")
   const [cardView, setCardView] = useState<"experience" | "resume">("experience")
   const cardRef = useRef<HTMLDivElement>(null)
   const [currentExperience, setCurrentExperience] = useState<PersonaData | null>(null)
   const [firstName, setFirstName] = useState<string>("")
+  const [selectedExperiences, setSelectedExperiences] = useState<Experience[]>([])
 
   useEffect(() => {
     // Get the last active experience data
@@ -36,17 +52,51 @@ export function ExportPageComponent() {
     loadExperience()
   }, [])
 
+  useEffect(() => {
+    // Load selected experiences from localStorage or create example data
+    const savedExperiences = localStorage.getItem('starExperiences')
+    if (savedExperiences) {
+      const allExperiences = JSON.parse(savedExperiences)
+      const selected = allExperiences.filter((exp: Experience) => exp.selected)
+      setSelectedExperiences(selected)
+    } else {
+      // Example data
+      const exampleExperience = {
+        id: 1,
+        title: "Lead Project Manager",
+        company: "Ruffian Corp.",
+        type: "work",
+        dateRange: {
+          startMonth: "January",
+          startYear: "2022",
+          endMonth: "December",
+          endYear: "2023"
+        },
+        bullets: [
+          "Spearheaded operational overhaul that addressed inefficiencies, employee turnover, and shipping cost spikes, contributing to the company's goal of $20M per store.",
+          "Developed and implemented 14 streamlined procedures to optimize daily operations, improving workflow efficiency and reducing redundancies.",
+          "Restructured shipping processes, negotiating partnerships that cut shipping costs by $140,000 annually while enhancing delivery times.",
+          "Launched an employee engagement initiative, reducing employee churn by 7% through tailored support and satisfaction programs.",
+          "Achieved an average increase of $10,000 in monthly sales by improving customer experience and optimizing employee performance, boosting overall store performance."
+        ],
+        selected: true
+      }
+      setSelectedExperiences([exampleExperience])
+      localStorage.setItem('starExperiences', JSON.stringify([exampleExperience]))
+    }
+  }, [])
+
   // Navigation handlers
-  const handleBackToView = () => {
-    router.push("/view")
+  const handleGoToSTAR = () => {
+    router.push("/star")
   }
 
   const handleGoHome = () => {
     router.push("/")
   }
 
-  const handleGoToStar = () => {
-    router.push("/starinput")
+  const handleGoToExp = () => {
+    router.push("/input")
   }
 
   const exportAsImage = async () => {
@@ -188,9 +238,9 @@ export function ExportPageComponent() {
         <Button 
           variant="outline" 
           className="mb-4"
-          onClick={handleBackToView}
+          onClick={handleGoToSTAR}
         >
-          &lt; Back to Edit/View
+          &lt; Back to STAR Bullets
         </Button>
         <div className="flex flex-col items-center justify-between space-y-4">
           <h1 className="text-2xl font-bold mb-4">
@@ -220,7 +270,7 @@ export function ExportPageComponent() {
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={handleGoToStar}
+                onClick={handleGoToSTAR}
               >
                 Build STAR Bullets
               </Button>
@@ -238,20 +288,19 @@ export function ExportPageComponent() {
         <div className="flex justify-between items-center mb-6">
           <Tabs value={cardView} onValueChange={(value) => setCardView(value as "experience" | "resume")}>
             <TabsList>
-              <TabsTrigger value="experience">Experience Card</TabsTrigger>
               <TabsTrigger value="resume">Resume Bullets</TabsTrigger>
             </TabsList>
           </Tabs>
           <GradientPicker background={background} setBackground={setBackground} />
         </div>
         <div ref={cardRef}>
-          <ExperienceCard
-            initialData={currentExperience}
-            persona={currentExperience}
-            format={cardView === "experience" ? "card" : "bullet"}
-            mode="view"
-            onEdit={() => {}}
-          />
+          {selectedExperiences.length > 0 ? (
+            <StarExperienceCard experiences={selectedExperiences} />
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              No experiences selected. Return to STAR Bullets to select experiences for export.
+            </div>
+          )}
         </div>
       </div>
     </div>

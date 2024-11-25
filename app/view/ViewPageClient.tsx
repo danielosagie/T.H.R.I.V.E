@@ -12,6 +12,7 @@ import { PersonaData } from '@/types/types'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PersonaSelector } from '@/components/persona-selector'
 import { ControlBar } from '@/components/control-bar'
+import { saveExperienceData } from '@/lib/data'
 
 export default function ViewPageClient() {
   const [personas, setPersonas] = useState<PersonaData[]>([])
@@ -68,8 +69,15 @@ export default function ViewPageClient() {
   }
 
   const handleExport = () => {
-    console.log("Exporting...")
-    // Implement export functionality here
+    if (selectedPersona) {
+      // Save the current experience data before navigating
+      saveExperienceData(selectedPersona)
+      // Navigate to the export page
+      router.push('/export')
+    } else {
+      console.error("No experience selected to export")
+      // Optionally show a toast or alert to the user
+    }
   }
 
   useEffect(() => {

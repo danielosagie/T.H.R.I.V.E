@@ -1,5 +1,5 @@
-import StarInputClient from './StarInputClient'
+import { StarMainPage } from "@/components/star-main-page"
 
-export default function StarInputPage() {
-  return <StarInputClient />
-}
+export default function StarPage() {
+  return <StarMainPage />
+} 
