@@ -113,12 +113,12 @@ export function StarMainPage() {
           <div>
             <h2 className="text-2xl font-bold mb-4">Your STAR Experiences</h2>
             <div className="flex justify-between items-center">
-              <Tabs defaultValue="work" value={activeTab} onValueChange={setActiveTab}>
+              <Tabs defaultValue="review" value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
+                  <TabsTrigger value="review">All</TabsTrigger>
                   <TabsTrigger value="work">Work</TabsTrigger>
                   <TabsTrigger value="volunteer">Volunteer</TabsTrigger>
                   <TabsTrigger value="school">School</TabsTrigger>
-                  <TabsTrigger value="review">Review All</TabsTrigger>
                 </TabsList>
               </Tabs>
               

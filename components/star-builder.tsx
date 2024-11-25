@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, ArrowRight, Copy, Download, Pencil, RefreshCw, FileText, Sparkles } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -20,6 +19,7 @@ import { getRandomRecommendations } from "@/lib/sample-data"
 import { useRouter } from "next/navigation"
 import { MinimalTiptapEditor } from '@/components/minimal-tiptap'
 import { Content } from '@tiptap/react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Industry {
   category: string;
@@ -28,22 +28,145 @@ interface Industry {
 
 const industriesByCategory: Industry[] = [
   {
-    category: "Technology & Communications",
+    category: "Agriculture & Food",
     industries: [
-      "Artificial Intelligence",
-      "Big Data & Analytics",
-      "Cloud Computing",
-      "Cybersecurity",
-      "E-commerce",
-      "FinTech",
-      "Hardware & Electronics",
-      "Information Technology",
-      "Internet & Digital Media",
-      "Software Development",
-      "Telecommunications",
-    ]
+      "AgriTech & Smart Farming",
+      "Food & Beverage Production",
+      "Food Distribution & Retail",
+      "Sustainable Agriculture",
+      "Urban Farming & Hydroponics",
+    ],
   },
-  // ... (all other categories and industries as provided in the previous prompt)
+  {
+    category: "Technology & Digital",
+    industries: [
+      "Artificial Intelligence & Machine Learning",
+      "Blockchain & Decentralized Technologies",
+      "Cloud Computing & Infrastructure",
+      "Cybersecurity & Privacy",
+      "Data Science & Analytics",
+      "Digital Transformation & Automation",
+      "E-commerce & Digital Retail",
+      "Enterprise Software",
+      "Gaming & Interactive Entertainment",
+      "Web Development & App Development",
+    ],
+  },
+  {
+    category: "Healthcare & Life Sciences",
+    industries: [
+      "Biotechnology & Pharmaceuticals",
+      "Digital Health Tech",
+      "Healthcare Services & Administration",
+      "Medical Devices & Diagnostics",
+      "Public Health & Epidemiology",
+      "Telemedicine & Remote Care",
+      "Wellness & Preventive Care",
+    ],
+  },
+  {
+    category: "Finance & Professional Services",
+    industries: [
+      "Accounting & Auditing",
+      "Banking & Financial Services",
+      "Cryptocurrency & Digital Assets",
+      "Insurance & Risk Management",
+      "Investment Management & Private Equity",
+      "Legal Services & Compliance",
+      "Real Estate & Property Management",
+      "Tax & Advisory Services",
+    ],
+  },
+  {
+    category: "Energy & Environmental",
+    industries: [
+      "Clean Energy & Renewables",
+      "Energy Utilities & Infrastructure",
+      "Environmental Conservation & Sustainability",
+      "Oil & Gas",
+      "Recycling & Waste Management",
+      "Water Resources & Management",
+    ],
+  },
+  {
+    category: "Manufacturing & Industrial",
+    industries: [
+      "Aerospace & Defense",
+      "Automotive & Transportation Equipment",
+      "Construction & Building Materials",
+      "Consumer Goods Manufacturing",
+      "Electronics & Hardware",
+      "Industrial Equipment & Machinery",
+      "Supply Chain & Logistics",
+    ],
+  },
+  {
+    category: "Media & Entertainment",
+    industries: [
+      "Advertising & Marketing",
+      "Content Creation & Distribution",
+      "Film & Television Production",
+      "Music & Audio Production",
+      "Publishing & Digital Media",
+      "Streaming Services",
+      "Visual Arts & Design",
+    ],
+  },
+  {
+    category: "Education & Nonprofit",
+    industries: [
+      "Early Childhood Education",
+      "Higher Education & Research",
+      "K-12 Education",
+      "Nonprofit & Philanthropy",
+      "Online Learning Platforms",
+      "Specialized Training & Development",
+    ],
+  },
+  {
+    category: "Retail & Consumer Services",
+    industries: [
+      "Apparel & Fashion",
+      "Beauty & Personal Care",
+      "Food & Beverage Services",
+      "Home Improvement & Furnishings",
+      "Luxury Goods & Jewelry",
+      "Travel & Hospitality",
+    ],
+  },
+  {
+    category: "Transportation & Mobility",
+    industries: [
+      "Aviation & Airlines",
+      "Maritime & Shipping",
+      "Public Transportation",
+      "Ride Sharing & Mobility Services",
+      "Trucking & Freight",
+      "Urban Transportation Planning",
+    ],
+  },
+  {
+    category: "Government & Public Services",
+    industries: [
+      "Defense & Military",
+      "Emergency Services",
+      "Infrastructure Planning & Development",
+      "Public Administration & Policy",
+      "Space Exploration",
+    ],
+  },
+  {
+    category: "Miscellaneous & Emerging Fields",
+    industries: [
+      "Artificial Reality & Virtual Reality",
+      "Consumer Electronics",
+      "Esports & Competitive Gaming",
+      "Fashion Technology",
+      "Pet Care & Services",
+      "Social Impact & Community Development",
+      "Space Tech & Exploration",
+    ],
+  },
 ];
 
 interface StarBuilderState {
@@ -52,7 +175,7 @@ interface StarBuilderState {
   basicInfo: {
     company: string
     position: string
-    industry: string
+    industries: string[]
     dateRange: {
       startMonth: string
       startYear: string
@@ -84,13 +207,13 @@ const initialState: StarBuilderState = {
   basicInfo: {
     company: "",
     position: "",
-    industry: "",
+    industries: [],
     dateRange: {
       startMonth: "",
       startYear: "",
       endMonth: "",
       endYear: ""
-    }
+    }       
   },
   starContent: {
     situation: "",
@@ -235,6 +358,20 @@ const StarBuilder: React.FC = () => {
     }
   }, [state, mounted])
 
+  useEffect(() => {
+    const savedData = localStorage.getItem('starBuilderData');
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      setState(prev => ({
+        ...prev,
+        basicInfo: {
+          ...prev.basicInfo,
+          ...parsedData.basicInfo
+        }
+      }));
+    }
+  }, []); // Run once on mount
+
   const handleSimulateData = useCallback(() => {
     setState(prev => ({
       ...prev,
@@ -279,7 +416,7 @@ const StarBuilder: React.FC = () => {
         body: JSON.stringify({
           company: state.basicInfo.company,
           position: state.basicInfo.position,
-          industry: state.basicInfo.industry,
+          industries: state.basicInfo.industries,
           situation: state.starContent.situation,
           task: state.starContent.task,
           actions: state.starContent.actions,
@@ -311,7 +448,11 @@ const StarBuilder: React.FC = () => {
   }, [state.basicInfo, state.starContent])
 
   const handleExperienceTypeSelect = useCallback((type: "work" | "volunteer" | "school") => {
-    setState(prev => ({ ...prev, experienceType: type, currentStep: 1 }))
+    setState(prev => ({
+      ...prev,
+      experienceType: type,
+      currentStep: prev.currentStep + 1
+    }))
   }, [])
 
   const handleNext = useCallback(() => {
@@ -548,14 +689,18 @@ const StarBuilder: React.FC = () => {
                 placeholder="Enter position title"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="industry">Industry</Label>
+            <div>
+              <Label htmlFor="industries" className="text-sm font-normal text-gray-700">Industries</Label>
               <IndustrySelect
-                value={state.basicInfo.industry}
-                onChange={(value) => setState(prev => ({
-                  ...prev,
-                  basicInfo: { ...prev.basicInfo, industry: value }
-                }))}
+                value={state.basicInfo.industries}
+                onChange={(newValue) => {
+                  updateState({
+                    basicInfo: {
+                      ...state.basicInfo,
+                      industries: newValue
+                    }
+                  });
+                }}
                 industriesByCategory={industriesByCategory}
               />
             </div>
@@ -736,49 +881,19 @@ const StarBuilder: React.FC = () => {
                   <Input id="position" name="position" value={state.basicInfo.position} onChange={handleInputChange} placeholder="Enter position title" />
                 </div>
                 <div>
-                  <Label htmlFor="industry" className="text-sm font-normal text-gray-700">Industry</Label>
-                  <Select 
-                    onValueChange={(value) => setState(prev => ({ ...prev, basicInfo: { ...prev.basicInfo, industry: value } }))}
-                    value={state.basicInfo.industry}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select industry" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <Input 
-                        placeholder="Search industries..." 
-                        value={industrySearch}
-                        onChange={(e) => setIndustrySearch(e.target.value)}
-                        className="mb-2"
-                      />
-                      {industriesByCategory.map((category) => (
-                        <React.Fragment key={category.category}>
-                          <SelectItem value={category.category} disabled>
-                            {category.category}
-                          </SelectItem>
-                          {category.industries
-                            .filter(industry => 
-                              industry.toLowerCase().includes(industrySearch.toLowerCase())
-                            )
-                            .map((industry) => (
-                              <SelectItem key={industry} value={industry}>
-                                {industry}
-                              </SelectItem>
-                            ))
-                          }
-                        </React.Fragment>
-                      ))}
-                      {industrySearch && !industriesByCategory.some(category => 
-                        category.industries.some(industry => 
-                          industry.toLowerCase().includes(industrySearch.toLowerCase())
-                        )
-                      ) && (
-                        <SelectItem value={industrySearch}>
-                          Other: {industrySearch}
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="industries" className="text-sm font-normal text-gray-700">Industries</Label>
+                  <IndustrySelect
+                    value={state.basicInfo.industries}
+                    onChange={(newValue) => {
+                      updateState({
+                        basicInfo: {
+                          ...state.basicInfo,
+                          industries: newValue
+                        }
+                      });
+                    }}
+                    industriesByCategory={industriesByCategory}
+                  />
                 </div>
               </div>
 
@@ -1117,9 +1232,7 @@ const StarBuilder: React.FC = () => {
                   ? 'font-bold border-b-2 border-primary' 
                   : 'font-normal text-gray-500'
                 }
-                cursor-pointer
               `}
-              onClick={() => handleStepClick(index)}
             >
               {step.title}
             </div>
@@ -1152,7 +1265,6 @@ const StarBuilder: React.FC = () => {
   }, [state.currentStep])
 
   const handleGenerateRecommendations = useCallback(async () => {
-    // First move to next step and show loading state
     setState(prev => ({
       ...prev,
       isGenerating: true,
@@ -1189,7 +1301,6 @@ const StarBuilder: React.FC = () => {
       }))
     } catch (error) {
       console.error('Error generating recommendations:', error)
-      // Keep user on the page, just show error state
       setState(prev => ({
         ...prev,
         isGenerating: false
@@ -1198,7 +1309,6 @@ const StarBuilder: React.FC = () => {
   }, [state.basicInfo, state.starContent])
 
   const handleSaveExperience = useCallback(() => {
-    // Create a new experience object with the gradient
     const newExperience = {
       id: Date.now(),
       title: state.basicInfo.position,
@@ -1211,19 +1321,34 @@ const StarBuilder: React.FC = () => {
       gradient: getRandomGradient()
     }
 
-    // Get existing experiences from localStorage
     const savedExperiences = localStorage.getItem('starExperiences')
     const experiences = savedExperiences ? JSON.parse(savedExperiences) : []
-    
-    // Add new experience
     experiences.push(newExperience)
-    
-    // Save back to localStorage
     localStorage.setItem('starExperiences', JSON.stringify(experiences))
 
-    // Navigate to star page
     router.push('/star')
   }, [state, router])
+
+  const updateState = (updates: Partial<StarBuilderState>) => {
+    setState(prev => {
+      const newState = {
+        ...prev,
+        ...updates
+      };
+
+      // Get existing data from localStorage
+      const existingData = localStorage.getItem('starBuilderData');
+      const parsedData = existingData ? JSON.parse(existingData) : {};
+
+      // Update localStorage with new state
+      localStorage.setItem('starBuilderData', JSON.stringify({
+        ...parsedData,
+        ...newState
+      }));
+
+      return newState;
+    });
+  };
 
   if (!mounted) {
     return null

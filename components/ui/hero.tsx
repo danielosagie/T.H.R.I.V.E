@@ -25,7 +25,7 @@ export default function Hero() {
               <Link href="/fork" passHref>
                 <Button size="lg">Create New</Button>
               </Link>
-              <Link href="/view" passHref>
+              <Link href="/continue" passHref>
                 <Button variant="outline" size="lg">Continue Editing</Button>
               </Link>
             </div>

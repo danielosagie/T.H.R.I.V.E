@@ -13,7 +13,11 @@ import { saveAs } from "file-saver"
 import { useRouter } from "next/navigation"
 import { getExperienceData } from "@/lib/data"
 
-export function ExportPageComponent() {
+interface ExportPageComponentProps {
+  experienceData?: PersonaData
+}
+
+export function ExportPageComponent({ experienceData }: ExportPageComponentProps) {
   const router = useRouter()
   const [background, setBackground] = useState<string>("linear-gradient(to top left,#accbee,#e7f0fd)")
   const [cardView, setCardView] = useState<"experience" | "resume">("experience")

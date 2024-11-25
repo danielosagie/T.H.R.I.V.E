@@ -15,3 +15,25 @@ export interface Tag {
   id: string;
   text: string;
 }
+
+export interface Experience {
+  id: number
+  title: string
+  company: string
+  type: 'work' | 'volunteer' | 'school'
+  dateRange: {
+    startMonth: string
+    startYear: string
+    endMonth: string
+    endYear: string
+  }
+  bullets: string[]
+  starContent: {
+    situation: string
+    task: string
+    actions: string
+    results: string
+  }
+  selected: boolean
+  gradient: string
+}
