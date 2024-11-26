@@ -516,14 +516,14 @@ Action: {star_content.get('actions', '')}  # Note: matches frontend 'actions'
 Result: {star_content.get('results', '')}  # Note: matches frontend 'results'
 
 Format the response as a JSON object with an array of 3-4 bullet points:
-{
+{{
     "bullets": [
         "- Bullet point 1",
         "- Bullet point 2",
         "- Bullet point 3",
         "- Bullet point 4"
     ]
-}"""
+}}"""
 
         # Add logging to debug prompt
         logging.info(f"Formatted prompt with data: {input_prompt}")
