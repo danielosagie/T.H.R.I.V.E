@@ -503,8 +503,7 @@ Enhanced Bullet: "- Provided tailored customer assistance, addressing inquiries 
 Your response should maintain this format and approach.
  """
 
-        input_prompt = f"""
-Review and enhance the provided resume content, transforming it into a strong, concise, but very impactful resume bullets. If the content is basic, improve it with context, measurable results, and clarity. If it is already improved, refine it for conciseness and impact. Keep the response formatted as resume-style bullet points, no sub-bullets but still impactful and telling of the full story. Here is the data you are making changes to:
+        input_prompt = f"""Review and enhance the provided resume content, transforming it into a strong, concise, but very impactful resume bullets. If the content is basic, improve it with context, measurable results, and clarity. If it is already improved, refine it for conciseness and impact. Keep the response formatted as resume-style bullet points, no sub-bullets but still impactful and telling of the full story. Here is the data you are making changes to:
 
 Company: {basic_info.get('company', '')}
 Position: {basic_info.get('position', '')}
@@ -516,14 +515,14 @@ Action: {star_content.get('actions', '')}  # Note: matches frontend 'actions'
 Result: {star_content.get('results', '')}  # Note: matches frontend 'results'
 
 Format the response as a JSON object with an array of 3-4 bullet points:
-{{
+{{{{
     "bullets": [
         "- Bullet point 1",
         "- Bullet point 2",
         "- Bullet point 3",
         "- Bullet point 4"
     ]
-}}"""
+}}}}"""
 
         # Add logging to debug prompt
         logging.info(f"Formatted prompt with data: {input_prompt}")
@@ -582,6 +581,29 @@ def ping():
 # @app.teardown_appcontext
 # def shutdown_session(exception=None):
 #     db_session.remove()
+
+def parse_bullets_response(response_text: str) -> dict:
+    """Parse the LLM response for bullet points."""
+    try:
+        # First try to parse as JSON directly
+        json_data = extract_json(response_text)
+        if json_data and "bullets" in json_data:
+            return json_data
+            
+        # If that fails, try to extract bullet points manually
+        bullets = []
+        for line in response_text.split('\n'):
+            if line.strip().startswith('- '):
+                bullets.append(line.strip())
+        
+        if bullets:
+            return {"bullets": bullets}
+            
+        raise ValueError("No valid bullet points found in response")
+        
+    except Exception as e:
+        logging.error(f"Error parsing bullets: {str(e)}")
+        raise ValueError(f"Failed to parse bullets: {str(e)}")
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
