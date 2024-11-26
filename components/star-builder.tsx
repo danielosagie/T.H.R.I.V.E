@@ -477,12 +477,41 @@ const StarBuilder: React.FC = () => {
   }, [])
 
   const handleGenerateBullets = useCallback(async () => {
+    // Validate required fields
+    if (!state.basicInfo.company || !state.basicInfo.position) {
+      toast.error("Please fill in company and position information")
+      return
+    }
+
+    if (!state.starContent.situation || !state.starContent.task || 
+        !state.starContent.actions || !state.starContent.results) {
+      toast.error("Please fill in all STAR content sections")
+      return
+    }
+
     setState(prev => ({
       ...prev,
       isGenerating: true,
       currentStep: prev.currentStep + 1,
       generatedBullets: []
     }))
+
+    const requestData = {
+      basic_info: {
+        company: state.basicInfo.company,
+        position: state.basicInfo.position,
+        industry: state.basicInfo.industries
+      },
+      star_content: {
+        situation: state.starContent.situation,
+        task: state.starContent.task,
+        actions: state.starContent.actions,
+        results: state.starContent.results
+      },
+      recommendations: state.recommendations
+    }
+
+    console.log('Sending request data:', requestData) // Add logging
 
     try {
       const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/bullets`
@@ -492,31 +521,22 @@ const StarBuilder: React.FC = () => {
         method: 'POST',
         credentials: 'include',
         headers: {
+          'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          basic_info: {
-            company: state.basicInfo.company,
-            position: state.basicInfo.position,
-            industry: state.basicInfo.industries
-          },
-          star_content: {
-            situation: state.starContent.situation,
-            task: state.starContent.task,
-            actions: state.starContent.actions,
-            results: state.starContent.results
-          },
-          recommendations: state.recommendations
-        }),
+        body: JSON.stringify(requestData)
       })
 
+      // Log the raw response for debugging
+      const responseText = await response.text()
+      console.log('Raw response:', responseText)
+
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Response not OK:', response.status, response.statusText, errorText)
-        throw new Error(`Failed to generate bullets: ${response.status} - ${errorText}`)
+        console.error('Response not OK:', response.status, response.statusText, responseText)
+        throw new Error(`Failed to generate bullets: ${response.status} - ${responseText}`)
       }
 
-      const data = await response.json()
+      const data = JSON.parse(responseText)
       
       if (!data.bullets || !Array.isArray(data.bullets)) {
         console.error('Invalid response format:', data)
@@ -555,10 +575,38 @@ const StarBuilder: React.FC = () => {
   }, [state.generatedBullets])
 
   const handleRegenerateBullets = useCallback(async () => {
+    if (!state.basicInfo.company || !state.basicInfo.position) {
+      toast.error("Please fill in company and position information")
+      return
+    }
+
+    if (!state.starContent.situation || !state.starContent.task || 
+        !state.starContent.actions || !state.starContent.results) {
+      toast.error("Please fill in all STAR content sections")
+      return
+    }
+
     setState(prev => ({
       ...prev,
       isGenerating: true
     }))
+
+    const requestData = {
+      basic_info: {
+        company: state.basicInfo.company,
+        position: state.basicInfo.position,
+        industry: state.basicInfo.industries
+      },
+      star_content: {
+        situation: state.starContent.situation,
+        task: state.starContent.task,
+        actions: state.starContent.actions,
+        results: state.starContent.results
+      },
+      recommendations: state.recommendations
+    }
+
+    console.log('Sending regenerate request data:', requestData)
 
     try {
       const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/bullets`
@@ -570,20 +618,7 @@ const StarBuilder: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          basic_info: {
-            company: state.basicInfo.company,
-            position: state.basicInfo.position,
-            industry: state.basicInfo.industries
-          },
-          star_content: {
-            situation: state.starContent.situation,
-            task: state.starContent.task,
-            actions: state.starContent.actions,
-            results: state.starContent.results
-          },
-          recommendations: state.recommendations
-        }),
+        body: JSON.stringify(requestData)
       })
 
       if (!response.ok) {
