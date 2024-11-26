@@ -61,15 +61,22 @@ agent = loop.run_until_complete(Agent.create("MainAgent", OLLAMA_BASE_URL, MODEL
 app = Flask(__name__)
 
 # Configure CORS
-CORS(app, resources={r"/*": {"origins": ["https://tcard.vercel.app", "http://localhost:3000"]}})
+CORS(app, resources={
+    r"/*": {
+        "origins": ["https://tcard.vercel.app", "http://localhost:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 @app.after_request
-def add_cors_headers(response):
+def after_request(response):
     origin = request.headers.get('Origin')
     if origin in ['https://tcard.vercel.app', 'http://localhost:3000']:
         response.headers['Access-Control-Allow-Origin'] = origin
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
-    response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
+    response.headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS, PUT, DELETE'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
     return response
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER

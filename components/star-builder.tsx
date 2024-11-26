@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation"
 import { MinimalTiptapEditor } from '@/components/minimal-tiptap'
 import { Content } from '@tiptap/react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "react-hot-toast"
 
 interface Industry {
   category: string;
@@ -408,7 +409,11 @@ const StarBuilder: React.FC = () => {
     }))
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/star/recommendations`, {
+      // Log the full URL to debug
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/recommendations`
+      console.log('Attempting to fetch from:', apiUrl)
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -425,7 +430,8 @@ const StarBuilder: React.FC = () => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate recommendations')
+        console.error('Response not OK:', response.status, response.statusText)
+        throw new Error(`Failed to generate recommendations: ${response.status}`)
       }
 
       const data = await response.json()
@@ -435,15 +441,12 @@ const StarBuilder: React.FC = () => {
         isGenerating: false
       }))
     } catch (error) {
-      console.error('Error generating recommendations using test data:', error)
-      // Load test data on error
-      
+      console.error('Error generating recommendations:', error)
       setState(prev => ({
         ...prev,
-        recommendations: getRandomRecommendations(),
         isGenerating: false
       }))
-    
+      toast.error("Failed to generate recommendations. Please try again later.")
     }
   }, [state.basicInfo, state.starContent])
 
@@ -473,59 +476,54 @@ const StarBuilder: React.FC = () => {
   }, [])
 
   const handleGenerateBullets = useCallback(async () => {
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       isGenerating: true,
       currentStep: prev.currentStep + 1,
       generatedBullets: []
     }))
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/generate_star_bullets`, {
-        method: "POST",
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/bullets`
+      console.log('Attempting to generate bullets from:', apiUrl)
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          basic_info: state.basicInfo,
-          star_content: state.starContent,
+          company: state.basicInfo.company,
+          position: state.basicInfo.position,
+          industries: state.basicInfo.industries,
+          situation: state.starContent.situation,
+          task: state.starContent.task,
+          actions: state.starContent.actions,
+          results: state.starContent.results,
+          recommendations: state.recommendations
         }),
       })
 
       if (!response.ok) {
-        throw new Error("Failed to generate bullets")
+        console.error('Response not OK:', response.status, response.statusText)
+        throw new Error(`Failed to generate bullets: ${response.status}`)
       }
 
       const data = await response.json()
-      
-      // Save the experience to localStorage
-      const savedExperiences = localStorage.getItem('starExperiences')
-      const experiences = savedExperiences ? JSON.parse(savedExperiences) : []
-      
-      const newExperience = {
-        id: Date.now(),
-        title: state.basicInfo.position,
-        company: state.basicInfo.company,
-        type: state.experienceType,
-        dateRange: state.basicInfo.dateRange,
-        bullets: data.bullets,
-        starContent: state.starContent
-      }
-
-      experiences.push(newExperience)
-      localStorage.setItem('starExperiences', JSON.stringify(experiences))
-
-      // Navigate to the star page
-      router.push('/star')
-
-    } catch (error) {
-      console.error("Error generating bullets:", error)
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
+        generatedBullets: data.bullets,
         isGenerating: false
       }))
+    } catch (error) {
+      console.error('Error generating bullets:', error)
+      setState(prev => ({
+        ...prev,
+        isGenerating: false
+      }))
+      toast.error("Failed to generate bullets. Please try again later.")
     }
-  }, [state.basicInfo, state.starContent, router])
+  }, [state.basicInfo, state.starContent, state.recommendations])
 
   const handleEditInput = useCallback(() => {
     // toast({
@@ -690,7 +688,7 @@ const StarBuilder: React.FC = () => {
               />
             </div>
             <div>
-              <Label htmlFor="industries" className="text-sm font-normal text-gray-700">Industries</Label>
+              <Label htmlFor="industries" className="text-sm font-normal">Industries</Label>
               <IndustrySelect
                 value={state.basicInfo.industries}
                 onChange={(newValue) => {
@@ -812,7 +810,7 @@ const StarBuilder: React.FC = () => {
               name="situation"
               value={state.starContent.situation}
               onChange={handleInputChange}
-              placeholder="Describe the situation..."
+              placeholder="The company was experiencing a decline in client retention due to inefficiencies in project management and communication."
             />
           </div>
 
@@ -1278,19 +1276,28 @@ const StarBuilder: React.FC = () => {
     }))
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/star/recommendations`, {
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/recommendations`
+      console.log('Attempting to fetch from:', apiUrl)
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          basic_info: state.basicInfo,
-          star_content: state.starContent,
+          company: state.basicInfo.company,
+          position: state.basicInfo.position,
+          industries: state.basicInfo.industries,
+          situation: state.starContent.situation,
+          task: state.starContent.task,
+          actions: state.starContent.actions,
+          results: state.starContent.results
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate recommendations')
+        console.error('Response not OK:', response.status, response.statusText)
+        throw new Error(`Failed to generate recommendations: ${response.status}`)
       }
 
       const data = await response.json()
@@ -1305,6 +1312,7 @@ const StarBuilder: React.FC = () => {
         ...prev,
         isGenerating: false
       }))
+      toast.error("Failed to generate recommendations. Please try again later.")
     }
   }, [state.basicInfo, state.starContent])
 
