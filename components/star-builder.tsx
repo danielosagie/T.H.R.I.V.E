@@ -21,6 +21,7 @@ import { MinimalTiptapEditor } from '@/components/minimal-tiptap'
 import { Content } from '@tiptap/react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "react-hot-toast"
+import StarterKit from "@tiptap/starter-kit"
 
 interface Industry {
   category: string;
@@ -489,27 +490,39 @@ const StarBuilder: React.FC = () => {
       
       const response = await fetch(apiUrl, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          company: state.basicInfo.company,
-          position: state.basicInfo.position,
-          industries: state.basicInfo.industries,
-          situation: state.starContent.situation,
-          task: state.starContent.task,
-          actions: state.starContent.actions,
-          results: state.starContent.results,
+          basic_info: {
+            company: state.basicInfo.company,
+            position: state.basicInfo.position,
+            industry: state.basicInfo.industries
+          },
+          star_content: {
+            situation: state.starContent.situation,
+            task: state.starContent.task,
+            actions: state.starContent.actions,
+            results: state.starContent.results
+          },
           recommendations: state.recommendations
         }),
       })
 
       if (!response.ok) {
-        console.error('Response not OK:', response.status, response.statusText)
-        throw new Error(`Failed to generate bullets: ${response.status}`)
+        const errorText = await response.text()
+        console.error('Response not OK:', response.status, response.statusText, errorText)
+        throw new Error(`Failed to generate bullets: ${response.status} - ${errorText}`)
       }
 
       const data = await response.json()
+      
+      if (!data.bullets || !Array.isArray(data.bullets)) {
+        console.error('Invalid response format:', data)
+        throw new Error('Invalid response format from server')
+      }
+
       setState(prev => ({
         ...prev,
         generatedBullets: data.bullets,
@@ -521,7 +534,7 @@ const StarBuilder: React.FC = () => {
         ...prev,
         isGenerating: false
       }))
-      toast.error("Failed to generate bullets. Please try again later.")
+      toast.error(error.message || "Failed to generate bullets. Please try again later.")
     }
   }, [state.basicInfo, state.starContent, state.recommendations])
 
@@ -541,30 +554,58 @@ const StarBuilder: React.FC = () => {
     }
   }, [state.generatedBullets])
 
-  const handleRegenerateBullets = useCallback(() => {
+  const handleRegenerateBullets = useCallback(async () => {
     setState(prev => ({
       ...prev,
       isGenerating: true
     }))
 
-    // Simulate API call with test data
-    setTimeout(() => {
-      const recommendations = getRandomRecommendations();
-      // Combine all recommendations into bullets
-      const bullets = [
-        ...recommendations.situation.map(r => r.title),
-        ...recommendations.task.map(r => r.title),
-        ...recommendations.action.map(r => r.title),
-        ...recommendations.result.map(r => r.title)
-      ];
+    try {
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/bullets`
+      console.log('Attempting to regenerate bullets from:', apiUrl)
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          basic_info: {
+            company: state.basicInfo.company,
+            position: state.basicInfo.position,
+            industry: state.basicInfo.industries
+          },
+          star_content: {
+            situation: state.starContent.situation,
+            task: state.starContent.task,
+            actions: state.starContent.actions,
+            results: state.starContent.results
+          },
+          recommendations: state.recommendations
+        }),
+      })
 
+      if (!response.ok) {
+        console.error('Response not OK:', response.status, response.statusText)
+        throw new Error(`Failed to regenerate bullets: ${response.status}`)
+      }
+
+      const data = await response.json()
       setState(prev => ({
         ...prev,
-        isGenerating: false,
-        generatedBullets: bullets
+        generatedBullets: data.bullets,
+        isGenerating: false
       }))
-    }, 2000)
-  }, [])
+    } catch (error) {
+      console.error('Error regenerating bullets:', error)
+      setState(prev => ({
+        ...prev,
+        isGenerating: false
+      }))
+      toast.error("Failed to regenerate bullets. Please try again later.")
+    }
+  }, [state.basicInfo, state.starContent, state.recommendations])
 
   const handleAddExperience = useCallback(() => {
     // toast({
@@ -1171,9 +1212,16 @@ const StarBuilder: React.FC = () => {
                     editorContentClassName="min-h-[200px] p-4"
                     output="text"
                     placeholder="Edit your STAR bullets here..."
-                    autofocus={true}
+                    autofocus={false}
                     editable={true}
                     editorClassName="focus:outline-none"
+                    immediatelyRender={false}
+                    extensions={[
+                      StarterKit.configure({
+                        heading: false,
+                        horizontalRule: false
+                      })
+                    ]}
                   />
                 </div>
               </CardContent>
