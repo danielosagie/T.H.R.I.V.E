@@ -538,9 +538,19 @@ const StarBuilder: React.FC = () => {
 
       const data = JSON.parse(responseText)
       
+      if (data.error) {
+        console.error('Server error:', data.error, data.raw_response)
+        throw new Error(data.error)
+      }
+      
       if (!data.bullets || !Array.isArray(data.bullets)) {
         console.error('Invalid response format:', data)
         throw new Error('Invalid response format from server')
+      }
+
+      // Make sure we have at least one bullet
+      if (data.bullets.length === 0) {
+        throw new Error('No bullets generated')
       }
 
       setState(prev => ({
@@ -554,7 +564,13 @@ const StarBuilder: React.FC = () => {
         ...prev,
         isGenerating: false
       }))
-      toast.error(error.message || "Failed to generate bullets. Please try again later.")
+      
+      // Provide more specific error messages
+      const errorMessage = error.message.includes('Failed to fetch') 
+        ? "Unable to connect to the server. Please check your internet connection."
+        : error.message || "Failed to generate bullets. Please try again later."
+        
+      toast.error(errorMessage)
     }
   }, [state.basicInfo, state.starContent, state.recommendations])
 

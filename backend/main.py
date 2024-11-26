@@ -22,6 +22,7 @@ import uuid
 import asyncio
 from werkzeug.datastructures import MultiDict
 import traceback
+from .utils import parse_bullets_response
 
 load_dotenv('.env.local')
 
@@ -479,7 +480,7 @@ def generate_bullets():
         return '', 204
     try:
         data = request.json
-        logging.info(f"Received data: {data}")  # Add logging to see incoming data
+        logging.info(f"Received data: {data}")
         
         # Extract STAR content and basic info
         star_content = data.get('starContent', {})
@@ -546,13 +547,17 @@ Format the response as a JSON object with an array of 3-4 bullet points:
             if chunk.choices[0].delta.content is not None:
                 generated_response += chunk.choices[0].delta.content
 
-        parsed_data = extract_json(generated_response)
+        logging.info(f"Generated response: {generated_response}")
         
-        if parsed_data is None:
-            logging.error(f"Failed to parse generated bullets. Raw response: {generated_response}")
-            return jsonify({"error": "Failed to parse generated bullets", "raw_response": generated_response}), 500
-
-        return jsonify({"bullets": parsed_data.get("bullets", [])})
+        try:
+            parsed_data = parse_bullets_response(generated_response)
+            return jsonify(parsed_data)
+        except ValueError as e:
+            logging.error(f"Parsing error: {str(e)}")
+            return jsonify({
+                "error": "Failed to parse generated bullets",
+                "raw_response": generated_response
+            }), 500
 
     except Exception as e:
         logging.error(f"Error in generate_bullets: {str(e)}")
