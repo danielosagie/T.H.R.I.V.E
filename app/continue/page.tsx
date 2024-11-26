@@ -1,4 +1,4 @@
-import ForkClient from './ForkClient'
+import ForkClient from './ContinueClient'
 import { Footer } from "@/components/footer"
 
 export const metadata = {
