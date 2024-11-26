@@ -22,7 +22,6 @@ import uuid
 import asyncio
 from werkzeug.datastructures import MultiDict
 import traceback
-from .utils import parse_bullets_response
 
 load_dotenv('.env.local')
 
@@ -483,8 +482,12 @@ def generate_bullets():
         logging.info(f"Received data: {data}")
         
         # Extract STAR content and basic info
-        star_content = data.get('starContent', {})
-        basic_info = data.get('basicInfo', {})
+        basic_info = data.get('basic_info', {})
+        star_content = data.get('star_content', {})
+        
+        # Fix industry field handling
+        industry = basic_info.get('industry', [])
+        industry_str = ', '.join(industry) if isinstance(industry, list) else str(industry)
 
         system_prompt = """You are an expert-level employment readiness specialist, behavioral therapist, and HR professional. Your task is to review, evaluate, and enhance provided resume content to make it impactful and effective. When given resume input, transform it into optimized, high-quality bullet points that highlight clarity, context, action, and results without introducing unrelated or invented information. Each bullet should maintain relevance, use powerful action verbs, and include measurable outcomes where applicable. Your output should reflect professional resume bullet formatting, emphasizing succinct and impactful wording. 
 
@@ -505,7 +508,7 @@ Review and enhance the provided resume content, transforming it into a strong, c
 
 Company: {basic_info.get('company', '')}
 Position: {basic_info.get('position', '')}
-Industry: {basic_info.get('industry', '')}
+Industry: {industry_str}
 
 Situation: {star_content.get('situation', '')}
 Task: {star_content.get('task', '')}
@@ -513,14 +516,17 @@ Action: {star_content.get('actions', '')}  # Note: matches frontend 'actions'
 Result: {star_content.get('results', '')}  # Note: matches frontend 'results'
 
 Format the response as a JSON object with an array of 3-4 bullet points:
-{{
+{
     "bullets": [
         "- Bullet point 1",
         "- Bullet point 2",
         "- Bullet point 3",
         "- Bullet point 4"
     ]
-}}"""
+}"""
+
+        # Add logging to debug prompt
+        logging.info(f"Formatted prompt with data: {input_prompt}")
 
         client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
         

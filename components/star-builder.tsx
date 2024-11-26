@@ -779,8 +779,8 @@ const StarBuilder: React.FC = () => {
                 placeholder="Enter position title"
               />
             </div>
-            <div>
-              <Label htmlFor="industries" className="text-sm font-normal">Industries</Label>
+            <div className="space-y-2 gap-4">
+              <Label htmlFor="industries" className="space-y-2">Industries</Label>
               <IndustrySelect
                 value={state.basicInfo.industries}
                 onChange={(newValue) => {
