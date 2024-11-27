@@ -487,7 +487,7 @@ Result: {data.get('results')}
             ],
             model="llama3-8b-8192",
             temperature=0.7,
-            max_tokens=1000,
+            max_tokens=4000,
             top_p=0.8,
             stream=True
         )

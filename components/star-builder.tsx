@@ -498,45 +498,74 @@ const StarBuilder: React.FC = () => {
       }
     }))
 
-    try {
-      // Log the full URL to debug
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/recommendations`
-      console.log('Attempting to fetch from:', apiUrl)
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          company: state.basicInfo.company,
-          position: state.basicInfo.position,
-          industries: state.basicInfo.industries,
-          situation: state.starContent.situation,
-          task: state.starContent.task,
-          actions: state.starContent.actions,
-          results: state.starContent.results
-        }),
-      })
+    const maxRetries = 3;
+    let currentTry = 0;
 
-      if (!response.ok) {
-        console.error('Response not OK:', response.status, response.statusText)
-        throw new Error(`Failed to generate recommendations: ${response.status}`)
+    while (currentTry < maxRetries) {
+      try {
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/recommendations`
+        console.log('Attempting to fetch from:', apiUrl, 'attempt:', currentTry + 1)
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            company: state.basicInfo.company,
+            position: state.basicInfo.position,
+            industry: state.basicInfo.industries?.[0] || '',
+            situation: state.starContent.situation,
+            task: state.starContent.task,
+            actions: state.starContent.actions,
+            results: state.starContent.results
+          }),
+        })
+
+        const responseText = await response.text()
+        console.log('Raw response:', responseText)
+        
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status} - ${responseText}`)
+        }
+
+        // Extract JSON from the response
+        const jsonMatch = responseText.match(/\{[\s\S]*?\}(?=\s*$)/)?.[0]
+        if (!jsonMatch) {
+          throw new Error('No valid JSON found in response')
+        }
+
+        const parsedData = JSON.parse(jsonMatch)
+        const recommendations = parsedData.recommendations || {
+          situation: parsedData.situation || [],
+          task: parsedData.task || [],
+          action: parsedData.action || [],
+          result: parsedData.result || []
+        }
+
+        setState(prev => ({
+          ...prev,
+          recommendations,
+          isGenerating: false
+        }))
+        return // Success, exit the retry loop
+        
+      } catch (error) {
+        console.error(`Attempt ${currentTry + 1} failed:`, error)
+        currentTry++
+        
+        if (currentTry === maxRetries) {
+          setState(prev => ({
+            ...prev,
+            isGenerating: false
+          }))
+          toast.error("Failed to generate recommendations. Please try again later.")
+          break
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, currentTry * 1000))
       }
-
-      const data = await response.json()
-      setState(prev => ({
-        ...prev,
-        recommendations: data.recommendations,
-        isGenerating: false
-      }))
-    } catch (error) {
-      console.error('Error generating recommendations:', error)
-      setState(prev => ({
-        ...prev,
-        isGenerating: false
-      }))
-      toast.error("Failed to generate recommendations. Please try again later.")
     }
   }, [state.basicInfo, state.starContent])
 
@@ -1483,7 +1512,7 @@ const StarBuilder: React.FC = () => {
         body: JSON.stringify({
           company: state.basicInfo.company,
           position: state.basicInfo.position,
-          industries: state.basicInfo.industries,
+          industry: state.basicInfo.industries?.[0] || '',
           situation: state.starContent.situation,
           task: state.starContent.task,
           actions: state.starContent.actions,
@@ -1491,19 +1520,36 @@ const StarBuilder: React.FC = () => {
         }),
       })
 
-      if (!response.ok) {
-        console.error('Response not OK:', response.status, response.statusText)
-        throw new Error(`Failed to generate recommendations: ${response.status}`)
+      const responseText = await response.text()
+      
+      // Extract JSON from the response
+      const jsonMatch = responseText.match(/\{[\s\S]*?\}(?=\s*$)/)?.[0]
+      if (!jsonMatch) {
+        throw new Error('No valid JSON found in response')
       }
 
-      const data = await response.json()
-      setState(prev => ({
-        ...prev,
-        recommendations: data.recommendations,
-        isGenerating: false
-      }))
+      try {
+        const parsedData = JSON.parse(jsonMatch)
+        
+        // Handle both direct and nested response formats
+        const recommendations = parsedData.recommendations || {
+          situation: parsedData.situation || [],
+          task: parsedData.task || [],
+          action: parsedData.action || [],
+          result: parsedData.result || []
+        }
+
+        setState(prev => ({
+          ...prev,
+          recommendations,
+          isGenerating: false
+        }))
+      } catch (parseError) {
+        console.error('Parse error:', parseError)
+        throw new Error('Failed to parse response data')
+      }
     } catch (error) {
-      console.error('Error generating recommendations:', error)
+      console.error('Error:', error)
       setState(prev => ({
         ...prev,
         isGenerating: false
