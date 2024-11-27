@@ -338,98 +338,135 @@ def generate_star_recommendations():
     try:
         data = request.json
         
-        system_prompt = """You are an expert-level employment readiness specialist, behavioral therapist, and HR professional. Your task is to review, evaluate, and enhance provided resume content to make it impactful and effective. When given resume input, transform it into optimized, high-quality bullet points that highlight clarity, context, action, and results without introducing unrelated or invented information. Each bullet should maintain relevance, use powerful action verbs, and include measurable outcomes where applicable. Your output should reflect professional resume bullet formatting, emphasizing succinct and impactful wording. 
+        system_prompt = """You are an employment readiness provider specialist, behavioral therapist, and expert-level HR professional. Your task is to analyze provided content structured in the STAR (Situation, Task, Action, Result) format and create efficient, impactful, cumulative feedback for each section. This feedback should be presented in JSON format with 6-9 carefully prioritized recommendations per section, only if they truly add significant value. If the input is already high quality, the LLM should refrain from unnecessary suggestions and indicate that no major changes are needed.
 
-Ensure that:
-- Basic or underdeveloped content is improved with context, specificity, and quantifiable outcomes.
-- Already refined input is further enhanced for clarity and maximum impact.
-- All responses should remain concise, powerful, and relevant to the job role.
+Key Guidelines:
 
-Example Enhancement:
-Input: "Assisted customers with purchases and inquiries."
-Enhanced Bullet: "- Provided tailored customer assistance, addressing inquiries promptly and facilitating a seamless purchasing process, contributing to a 15% boost in customer satisfaction."
+Prioritize High-Impact Feedback: Focus on the most effective, high-value suggestions that will greatly enhance the STAR response.
+Cumulative Improvement: Each recommendation must build on the previous one, creating a progressive series of enhancements.
+Avoid Generic Feedback: Do not use templated examples from the prompt unless they are relevant to the content provided.
+Content-Relevant Feedback: Ensure all examples and suggestions directly relate to the provided user input. If an example from the prompt applies, use it; otherwise, create specific, relevant examples.
+Limit to Valuable Suggestions: Only provide recommendations that significantly improve the content. If no further impactful improvements can be made, indicate that feedback is complete for that section.
+Output Structure: For each section (Situation, Task, Action, Result), create a JSON array with each recommendation containing:
 
-Your response should maintain this format and approach.
+Title: A concise title summarizing the recommendation.
+Subtitle: An explanation of why this recommendation enhances the content.
+Original Content: The provided content for that STAR section.
+Examples: Two cumulative examples showing how the recommendation improves the content, with the core changes highlighted in bold. Only focus on the work experiences 
+Format Example:
+
+{
+  "situation": [
+    {
+      "title": "Principle: Specificity",
+      "subtitle": "Provide detailed context to highlight why the situation is significant and who it affects. This ensures the reader understands the stakes involved and the environment in which the action took place.",
+      "original_content": "Ruffian Corp was struggling to reach their goals of 20 million per store",
+      "examples": [
+        {
+          "example_1": "Ruffian Corp was struggling to hit their target of $20 million per store, **increasing pressure on store managers to cut costs** (added resulting effect).",
+          "example_2": "Ruffian Corp struggled to meet the $20 million per store target due to **inefficiencies and rising costs, straining store managers to find solutions** (included reasons and resulting impact)."
+        }
+      ]
+    },
+    {
+      "title": "Principle: Stakeholder Details",
+      "subtitle": "Include relevant stakeholders to show the complexity of the situation and accountability. This adds depth and clarifies who is involved or impacted by the challenge.",
+      "original_content": "Ruffian Corp was struggling to reach their goals of 20 million per store",
+      "examples": [
+        {
+          "example_1": "Ruffian Corp's $20 million per store goal challenged **store and regional managers to reassess budgets** (added key stakeholders).",
+          "example_2": "Ruffian Corp’s goal put **store managers, finance teams, and supply chain staff** under pressure to collaborate on cost-saving measures (included more stakeholders for depth)."
+        }
+      ]
+    }
+  ],
+  "task": [
+    {
+      "title": "Principle: Clarify Responsibility",
+      "subtitle": "Clearly define what your role entailed and how it was connected to the overall goal. This makes your contribution and accountability clear.",
+      "original_content": "I was responsible for overseeing the project.",
+      "examples": [
+        {
+          "example_1": "I was responsible for **leading a cross-functional team to meet project milestones** (clarified role and action).",
+          "example_2": "I was responsible for **coordinating a team of 10 to align with strategic goals** (added team detail and alignment)."
+        }
+      ]
+    },
+    {
+      "title": "Principle: Impact Linkage",
+      "subtitle": "Connect your task to broader organizational or project objectives to demonstrate the importance of your work in the larger context.",
+      "original_content": "I was responsible for overseeing the project.",
+      "examples": [
+        {
+          "example_1": "I led a team to ensure milestones were met, **aligning with annual growth targets** (linked task to organizational goals).",
+          "example_2": "I oversaw the project to contribute to a **15% efficiency boost** (added specific target linkage)."
+        }
+      ]
+    }
+  ],
+  "action": [
+    {
+      "title": "Principle: Specific Steps",
+      "subtitle": "Detail specific actions to show your active involvement and the effort you put into achieving results.",
+      "original_content": "I led the project team and made sure everything ran smoothly.",
+      "examples": [
+        {
+          "example_1": "I **scheduled weekly meetings and addressed roadblocks** to maintain progress (added specific actions).",
+          "example_2": "I **created detailed plans and assigned tasks** to adhere to timelines (included task assignment)."
+        }
+      ]
+    },
+    {
+      "title": "Principle: Demonstrate Leadership",
+      "subtitle": "Showcase leadership by emphasizing how you took the initiative or guided the team effectively.",
+      "original_content": "I led the project team and made sure everything ran smoothly.",
+      "examples": [
+        {
+          "example_1": "I **initiated an agile workflow**, boosting productivity by 20% (highlighted leadership and impact).",
+          "example_2": "I **coordinated cross-department efforts** to resolve issues quickly (showcased proactive leadership)."
+        }
+      ]
+    }
+  ],
+  "result": [
+    {
+      "title": "Principle: Quantify Success",
+      "subtitle": "Use specific numbers to illustrate the impact of your efforts. This adds credibility and demonstrates measurable achievement.",
+      "original_content": "The project was successful and met expectations.",
+      "examples": [
+        {
+          "example_1": "The project led to a **15% reduction in production time and 10% cost savings** (added specific metrics).",
+          "example_2": "The project improved **customer satisfaction by 25% and reduced delays by 20%** (added additional impact metrics)."
+        }
+      ]
+    },
+    {
+      "title": "Principle: Long-Term Impact",
+      "subtitle": "Demonstrate how your work had lasting effects or benefits to show that the impact was sustainable.",
+      "original_content": "The project was successful and met expectations.",
+      "examples": [
+        {
+          "example_1": "The project set a standard, **increasing company-wide efficiency by 10% over six months** (mentioned long-term benefit).",
+          "example_2": "The framework enabled future projects to achieve **faster timelines** (emphasized replicable success)."
+        }
+      ]
+    }
+  ]
+}
+
 """
 
-        input_prompt = f"""
-Given the user's STAR-based experience input, reformat it according to the STAR structure and provide detailed, high-value feedback as JSON arrays. For each STAR section, generate between 6-9 impactful recommendations that build upon one another, prioritizing suggestions that add measurable value.
+        input_prompt = f"""Given the following user-provided STAR experience, format it into the STAR structure and provide detailed, high-value feedback as JSON arrays. Each section should include between 6-9 impactful recommendations that build cumulatively from one to the next. Only include suggestions if they provide significant value. If a section is already well-developed, note that further changes aren't necessary.
 
-For each recommendation, provide the following:
+Each recommendation should include:
 
-Format the response as:
-{{
-    "situation": [
-        {{
-            "title": "Clear recommendation title",
-            "subtitle": "Brief explanation of the improvement",
-            "original_content": "Original text",
-            "examples": [
-                {{
-                    "content": "Improved version 1",
-                    "explanation": "Why this is better"
-                }},
-                {{
-                    "content": "Improved version 2",
-                    "explanation": "Why this is even better"
-                }}
-            ]
-        }}
-    ],
-    "task": [
-        {{
-            "title": "Clear recommendation title",
-            "subtitle": "Brief explanation of the improvement",
-            "original_content": "Original text",
-            "examples": [
-                {{
-                    "content": "Improved version 1",
-                    "explanation": "Why this is better"
-                }},
-                {{
-                    "content": "Improved version 2",
-                    "explanation": "Why this is even better"
-                }}
-            ]
-        }}
-    ],
-    "action": [
-        {{
-            "title": "Clear recommendation title",
-            "subtitle": "Brief explanation of the improvement",
-            "original_content": "Original text",
-            "examples": [
-                {{
-                    "content": "Improved version 1",
-                    "explanation": "Why this is better"
-                }},
-                {{
-                    "content": "Improved version 2",
-                    "explanation": "Why this is even better"
-                }}
-            ]
-        }}
-    ],
-    "result": [
-        {{
-            "title": "Clear recommendation title",
-            "subtitle": "Brief explanation of the improvement",
-            "original_content": "Original text",
-            "examples": [
-                {{
-                    "content": "Improved version 1",
-                    "explanation": "Why this is better"
-                }},
-                {{
-                    "content": "Improved version 2",
-                    "explanation": "Why this is even better"
-                }}
-            ]
-        }}
-    ]
-}}
+Title (brief, summarizing the main idea)
+Subtitle (explaining why it adds value)
+Original Content (the user’s initial input)
+Examples showing cumulative improvements with key changes highlighted.
+Focus on efficiency and impact. If a recommendation won't significantly improve the content, do not include it.
 
-Prioritize recommendations that focus on efficiency, clarity, and impact. If a section is already well-developed, note that further improvements aren’t necessary. Only include a recommendation if it contributes significant value:
+Input Data:
 
 Company: {data.get('company')}
 Position: {data.get('position')}
@@ -503,7 +540,7 @@ Enhanced Bullet: "- Provided tailored customer assistance, addressing inquiries 
 Your response should maintain this format and approach.
  """
 
-        input_prompt = f"""Review and enhance the provided resume content, transforming it into a strong, concise, but very impactful resume bullets. If the content is basic, improve it with context, measurable results, and clarity. If it is already improved, refine it for conciseness and impact. Keep the response formatted as resume-style bullet points, no sub-bullets but still impactful and telling of the full story. Here is the data you are making changes to:
+        input_prompt = f"""Review and enhance the provided resume content, transforming it into a efficient, strong, concise, but very impactful resume bullets. If the content is basic, improve it with context, measurable results, and clarity. If it is already improved, refine it for conciseness and impact. Do not over-improve it. Focus on efficiency and impact but CLEAR STORYTELLING. Keep the response formatted as resume-style bullet points, no sub-bullets but still impactful and telling of the full story. Here is the data you are making changes to:
 
 Company: {basic_info.get('company', '')}
 Position: {basic_info.get('position', '')}
@@ -511,8 +548,8 @@ Industry: {industry_str}
 
 Situation: {star_content.get('situation', '')}
 Task: {star_content.get('task', '')}
-Action: {star_content.get('actions', '')}  # Note: matches frontend 'actions'
-Result: {star_content.get('results', '')}  # Note: matches frontend 'results'
+Action: {star_content.get('actions', '')}  
+Result: {star_content.get('results', '')}  
 
 Format the response as a JSON object with an array of 3-4 bullet points:
 {{{{

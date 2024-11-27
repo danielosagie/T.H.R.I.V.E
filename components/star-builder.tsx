@@ -17,11 +17,27 @@ import { IndustrySelect } from "./industry-select"
 import { SectionRecommendations } from "./section-recommendations"
 import { getRandomRecommendations } from "@/lib/sample-data"
 import { useRouter } from "next/navigation"
-import { MinimalTiptapEditor } from '@/components/minimal-tiptap'
-import { Content } from '@tiptap/react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from "react-hot-toast"
-import StarterKit from "@tiptap/starter-kit"
+import { MinimalTiptapEditor } from '@/components/minimal-tiptap/minimal-tiptap'
+import { SectionTwo } from '@/components/minimal-tiptap/components/section/two'
+import { SectionFour } from '@/components/minimal-tiptap/components/section/four'
+import { Separator } from '@/components/ui/separator'
+import StarterKit from '@tiptap/starter-kit'
+import Markdown from 'react-markdown'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useEditor } from '@tiptap/react'
+import { Bold, Italic, UnderlineIcon, List } from 'lucide-react'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import Underline from '@tiptap/extension-underline'
+import Placeholder from '@tiptap/extension-placeholder'
+import Typography from '@tiptap/extension-typography'
+import { toast } from 'sonner'
+import { Toaster } from 'sonner'
 
 interface Industry {
   category: string;
@@ -32,6 +48,7 @@ const industriesByCategory: Industry[] = [
   {
     category: "Agriculture & Food",
     industries: [
+      "Farming & Livestock",
       "AgriTech & Smart Farming",
       "Food & Beverage Production",
       "Food Distribution & Retail",
@@ -322,6 +339,78 @@ const getRandomGradient = () => {
   const hue2 = (hue1 + 30) % 360;
   return `linear-gradient(135deg, hsl(${hue1}, 70%, 80%) 0%, hsl(${hue2}, 70%, 80%) 100%)`;
 };
+
+// Define a simpler toolbar button component
+const ToolbarButton = ({ onClick, isActive, icon, label }) => (
+  <Button
+    variant="ghost"
+    size="sm"
+    className={`p-2 ${isActive ? 'bg-muted' : ''}`}
+    onClick={onClick}
+    title={label}
+  >
+    {icon}
+  </Button>
+)
+
+const MinimalEditor = ({ value, onChange, ...props }) => {
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        bulletList: true,
+        orderedList: true,
+        heading: false,
+        codeBlock: false,
+      })
+    ],
+    content: value,
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML())
+    },
+  })
+
+  if (!editor) {
+    return null
+  }
+
+  return (
+    <>
+      <MinimalTiptapEditor
+        editor={editor}
+        {...props}
+      />
+      <div className="shrink-0 overflow-x-auto border-t border-border p-2">
+        <div className="flex w-max items-center justify-center gap-2">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            isActive={editor.isActive('bold')}
+            icon={<Bold className="h-4 w-4" />}
+            label="Bold"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            isActive={editor.isActive('italic')}
+            icon={<Italic className="h-4 w-4" />}
+            label="Italic"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            isActive={editor.isActive('underline')}
+            icon={<UnderlineIcon className="h-4 w-4" />}
+            label="Underline"
+          />
+          <div className="h-7 w-px bg-border mx-2" />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            isActive={editor.isActive('bulletList')}
+            icon={<List className="h-4 w-4" />}
+            label="Bullet List"
+          />
+        </div>
+      </div>
+    </>
+  )
+}
 
 const StarBuilder: React.FC = () => {
   const [mounted, setMounted] = useState(false)
@@ -902,7 +991,7 @@ const StarBuilder: React.FC = () => {
               name="situation"
               value={state.starContent.situation}
               onChange={handleInputChange}
-              placeholder="The company was experiencing a decline in client retention due to inefficiencies in project management and communication."
+              placeholder="Try to describe the situation - The company was experiencing a decline in client retention due to inefficiencies in project management and communication."
             />
           </div>
 
@@ -913,7 +1002,7 @@ const StarBuilder: React.FC = () => {
               name="task"
               value={state.starContent.task}
               onChange={handleInputChange}
-              placeholder="What was your task..."
+                placeholder="What was your task? - My role was to analyze the current processes and recommend improvements to enhance client satisfaction and streamline operations. "
             />
           </div>
 
@@ -924,7 +1013,7 @@ const StarBuilder: React.FC = () => {
               name="actions"
               value={state.starContent.actions}
               onChange={handleInputChange}
-              placeholder="What actions did you take..."
+               placeholder="What actions did you take? - Conducted in-depth data analysis, facilitated workshops with teams, and introduced new tools to track client engagement and project timelines."
             />
           </div>
 
@@ -935,7 +1024,7 @@ const StarBuilder: React.FC = () => {
               name="results"
               value={state.starContent.results}
               onChange={handleInputChange}
-              placeholder="What were the results..."
+              placeholder="What were the results? - Increased client retention by 15% over 6 months and reduced project completion time by 20%."
             />
           </div>
         </div>
@@ -1246,37 +1335,45 @@ const StarBuilder: React.FC = () => {
               </div>
             </div>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-2">
+            <TooltipProvider>
+              <div className="group relative flex flex-col justify-between rounded-xl bg-white transform-gpu dark:bg-black dark:[border:1px_solid_rgba(255,255,255,.1)] dark:[box-shadow:0_-20px_80px_-20px_#ffffff1f_inset] col-span-3 lg:col-span-1">
+                <div className="flex flex-col border border-input shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary h-full min-h-56 w-full rounded-xl">
                   <MinimalTiptapEditor
                     value={state.generatedBullets.join("\n")}
                     onChange={(newContent) => {
                       setState(prev => ({ 
                         ...prev, 
                         generatedBullets: String(newContent)
-                          .split("\n")
+                          .split('\n')
                           .filter(Boolean)
                       }))
                     }}
-                    className="w-full"
-                    editorContentClassName="min-h-[200px] p-4"
-                    output="text"
-                    placeholder="Edit your STAR bullets here..."
-                    autofocus={false}
-                    editable={true}
-                    editorClassName="focus:outline-none"
-                    immediatelyRender={false}
                     extensions={[
                       StarterKit.configure({
+                        bulletList: true,
+                        orderedList: true,
                         heading: false,
-                        horizontalRule: false
-                      })
+                        codeBlock: false,
+                      }),
+                      Underline,
+                      Placeholder.configure({
+                        placeholder: 'Type your bullets here...',
+                      }),
+                      Typography,
                     ]}
+                    className="w-full"
+                    editorContentClassName="prose dark:prose-invert max-w-none overflow-auto h-full px-4 py-3"
+                    editorClassName="focus:outline-none h-full"
+                    output="html"
+                    placeholder="Type your bullets here..."
+                    autofocus={true}
+                    editable={true}
+                    throttleDelay={0}
+                    shouldRerenderOnTransaction={false}
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </TooltipProvider>
 
             <div className="flex justify-between pt-4">
               <Button 
@@ -1462,86 +1559,90 @@ const StarBuilder: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col dark:bg-neutral-950">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <Link href="/" className="flex items-center space-x-2">
-              <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
-              <span className="font-semibold">THRIVE Toolkit</span>
-            </Link>
-            <h2 className="text-2xl font-bold">Building Your STAR Bullets</h2>
-            <Button 
-              variant="ghost" 
-              onClick={handleRestart}
-              className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Restart
-            </Button>
-          </div>
-          <div className="flex justify-between mt-4 px-8">
-            {renderStepIndicator()}
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto">
-          {renderCurrentStep()}
-          {state.currentStep > 0 && (
-            <div className="mt-8 flex justify-between">
-              <Button onClick={handleBack} variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
+    <div className="min-h-screen flex flex-col">
+      <Toaster />
+      
+      <div className="min-h-screen bg-white flex flex-col dark:bg-neutral-950">
+        <header className="border-b">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between mb-4">
+              <Link href="/" className="flex items-center space-x-2">
+                <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
+                <span className="font-semibold">THRIVE Toolkit</span>
+              </Link>
+              <h2 className="text-2xl font-bold">Building Your STAR Bullets</h2>
+              <Button 
+                variant="ghost" 
+                onClick={handleRestart}
+                className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Restart
               </Button>
-              {state.currentStep < steps.length - 1 ? (
-                <Button 
-                  onClick={state.currentStep === 1 ? handleGenerateRecommendations : handleGenerateBullets}
-                  disabled={state.isGenerating}
-                >
-                  {state.isGenerating ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      {state.currentStep === 1 && "Generate Recommendations"}
-                      {state.currentStep === 2 && "Generate Bullets"}
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <Button 
-                  onClick={handleSaveExperience}
-                  disabled={state.isGenerating}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Save Experience
-                </Button>
-              )}
             </div>
-          )}
-        </div>
-      </main>
+            <div className="flex justify-between mt-4 px-8">
+              {renderStepIndicator()}
+            </div>
+          </div>
+        </header>
 
-      <footer className="border-t">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="text-sm text-neutral-500 dark:text-neutral-400">
-            Designed by Georgia Tech Research Institute
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <div className="max-w-3xl mx-auto">
+            {renderCurrentStep()}
+            {state.currentStep > 0 && (
+              <div className="mt-8 flex justify-between">
+                <Button onClick={handleBack} variant="outline">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Button>
+                {state.currentStep < steps.length - 1 ? (
+                  <Button 
+                    onClick={state.currentStep === 1 ? handleGenerateRecommendations : handleGenerateBullets}
+                    disabled={state.isGenerating}
+                  >
+                    {state.isGenerating ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        {state.currentStep === 1 && "Generate Recommendations"}
+                        {state.currentStep === 2 && "Generate Bullets"}
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={handleSaveExperience}
+                    disabled={state.isGenerating}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Save Experience
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
-          <div className="space-x-4">
-            <Link href="/feedback" className="text-sm text-neutral-500 hover:underline dark:text-neutral-400">
-              Give Us Feedback
-            </Link>
-            <Link href="/privacy" className="text-sm text-neutral-500 hover:underline dark:text-neutral-400">
-              Privacy Policy
-            </Link>
+        </main>
+
+        <footer className="border-t">
+          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div className="text-sm text-neutral-500 dark:text-neutral-400">
+              Designed by Georgia Tech Research Institute
+            </div>
+            <div className="space-x-4">
+              <Link href="/feedback" className="text-sm text-neutral-500 hover:underline dark:text-neutral-400">
+                Give Us Feedback
+              </Link>
+              <Link href="/privacy" className="text-sm text-neutral-500 hover:underline dark:text-neutral-400">
+                Privacy Policy
+              </Link>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   )
 }

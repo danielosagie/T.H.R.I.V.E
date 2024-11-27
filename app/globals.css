@@ -163,6 +163,43 @@
   .section-container {
     @apply p-2 sm:p-3 md:p-4;
   }
+
+  .tiptap {
+    @apply prose dark:prose-invert max-w-none;
+  }
+
+  .tiptap ul {
+    @apply list-disc list-inside my-2 space-y-1;
+  }
+
+  .tiptap ol {
+    @apply list-decimal list-inside my-2 space-y-1;
+  }
+
+  .tiptap p {
+    @apply my-1;
+  }
+
+  .tiptap p.is-editor-empty:first-child::before {
+    @apply text-muted-foreground;
+    content: attr(data-placeholder);
+    float: left;
+    pointer-events: none;
+    height: 0;
+  }
+
+  .tiptap-toolbar {
+    @apply flex items-center justify-center gap-1 px-3 py-2 border-t border-input;
+  }
+
+  .tiptap-toolbar button {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium 
+           transition-colors hover:bg-muted hover:text-muted-foreground 
+           focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring 
+           disabled:pointer-events-none disabled:opacity-50 
+           data-[state=on]:bg-accent data-[state=on]:text-accent-foreground 
+           bg-transparent size-8 p-0;
+  }
 }
 
 @layer base {
