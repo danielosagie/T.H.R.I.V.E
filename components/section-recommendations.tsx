@@ -9,8 +9,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import { RecommendationsSkeleton } from "./recommendations-skeleton"
 
 interface Example {
-  content: string
-  explanation: string
+  example1: string
+  example2: string
 }
 
 interface Recommendation {
@@ -57,9 +57,21 @@ export function SectionRecommendations({
         <div className="text-sm">
           <div className="font-medium">Examples:</div>
           {recommendation.examples.map((example, exIndex) => (
-            <div key={exIndex} className="bg-gray-100 rounded-md p-3 mt-2">
-              <p>{example.content}</p>
-              <p className="text-blue-500 mt-2">{example.explanation}</p>
+            <div key={exIndex} className="space-y-2">
+              <div className="bg-gray-100 rounded-md p-3 mt-2">
+                <div dangerouslySetInnerHTML={{ 
+                  __html: (example?.example1 || '')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\((.*?)\)\.?/g, '<span class="text-blue-500">($1)</span>')
+                }} />
+              </div>
+              <div className="bg-gray-100 rounded-md p-3 mt-2">
+                <div dangerouslySetInnerHTML={{ 
+                  __html: (example?.example2 || '')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\((.*?)\)\.?/g, '<span class="text-blue-500">($1)</span>')
+                }} />
+              </div>
             </div>
           ))}
         </div>

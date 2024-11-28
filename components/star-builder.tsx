@@ -498,74 +498,65 @@ const StarBuilder: React.FC = () => {
       }
     }))
 
-    const maxRetries = 3;
-    let currentTry = 0;
+    try {
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/recommendations`
+      console.log('Attempting to fetch from:', apiUrl)
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          company: state.basicInfo.company,
+          position: state.basicInfo.position,
+          industry: state.basicInfo.industries?.[0] || '',
+          situation: state.starContent.situation,
+          task: state.starContent.task,
+          actions: state.starContent.actions,
+          results: state.starContent.results
+        }),
+      })
 
-    while (currentTry < maxRetries) {
-      try {
-        const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/recommendations`
-        console.log('Attempting to fetch from:', apiUrl, 'attempt:', currentTry + 1)
-        
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            company: state.basicInfo.company,
-            position: state.basicInfo.position,
-            industry: state.basicInfo.industries?.[0] || '',
-            situation: state.starContent.situation,
-            task: state.starContent.task,
-            actions: state.starContent.actions,
-            results: state.starContent.results
-          }),
-        })
-
-        const responseText = await response.text()
-        console.log('Raw response:', responseText)
-        
-        if (!response.ok) {
-          throw new Error(`Server error: ${response.status} - ${responseText}`)
-        }
-
-        // Extract JSON from the response
-        const jsonMatch = responseText.match(/\{[\s\S]*?\}(?=\s*$)/)?.[0]
-        if (!jsonMatch) {
-          throw new Error('No valid JSON found in response')
-        }
-
-        const parsedData = JSON.parse(jsonMatch)
-        const recommendations = parsedData.recommendations || {
-          situation: parsedData.situation || [],
-          task: parsedData.task || [],
-          action: parsedData.action || [],
-          result: parsedData.result || []
-        }
-
-        setState(prev => ({
-          ...prev,
-          recommendations,
-          isGenerating: false
-        }))
-        return // Success, exit the retry loop
-        
-      } catch (error) {
-        console.error(`Attempt ${currentTry + 1} failed:`, error)
-        currentTry++
-        
-        if (currentTry === maxRetries) {
-          setState(prev => ({
-            ...prev,
-            isGenerating: false
-          }))
-          toast.error("Failed to generate recommendations. Please try again later.")
-          break
-        }
-        
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, currentTry * 1000))
+      const responseText = await response.text()
+      console.log('Raw response:', responseText)
+      
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status} - ${responseText}`)
       }
+
+      const data = JSON.parse(responseText)
+      
+      // Transform the recommendations to ensure examples are properly structured
+      const transformRecommendations = (section: any[]) => {
+        return section.map(item => ({
+          ...item,
+          examples: item.examples.map((example: any) => ({
+            example1: example.example_1 || '',
+            example2: example.example_2 || ''
+          }))
+        }))
+      }
+
+      const recommendations = {
+        situation: transformRecommendations(data.recommendations.situation || []),
+        task: transformRecommendations(data.recommendations.task || []),
+        action: transformRecommendations(data.recommendations.action || []),
+        result: transformRecommendations(data.recommendations.result || [])
+      }
+
+      setState(prev => ({
+        ...prev,
+        recommendations,
+        isGenerating: false
+      }))
+    } catch (error) {
+      console.error('Error:', error)
+      setState(prev => ({
+        ...prev,
+        isGenerating: false
+      }))
+      toast.error("Failed to generate recommendations. Please try again later.")
     }
   }, [state.basicInfo, state.starContent])
 
@@ -645,7 +636,6 @@ const StarBuilder: React.FC = () => {
         body: JSON.stringify(requestData)
       })
 
-      // Log the raw response for debugging
       const responseText = await response.text()
       console.log('Raw response:', responseText)
 
@@ -654,26 +644,42 @@ const StarBuilder: React.FC = () => {
         throw new Error(`Failed to generate bullets: ${response.status} - ${responseText}`)
       }
 
-      const data = JSON.parse(responseText)
+      // Extract JSON from the response using regex
+      const jsonMatch = responseText.match(/\{[\s\S]*?\}(?=\s*$)/)?.[0] || 
+                       responseText.match(/\{\{[\s\S]*?\}\}/)?.[0]?.replace(/\{\{|\}\}/g, '')
       
-      if (data.error) {
-        console.error('Server error:', data.error, data.raw_response)
-        throw new Error(data.error)
+      if (!jsonMatch) {
+        throw new Error('No valid JSON found in response')
       }
+
+      const data = JSON.parse(jsonMatch)
       
       if (!data.bullets || !Array.isArray(data.bullets)) {
         console.error('Invalid response format:', data)
         throw new Error('Invalid response format from server')
       }
 
-      // Make sure we have at least one bullet
-      if (data.bullets.length === 0) {
-        throw new Error('No bullets generated')
+      // Transform bullets into TipTap JSON content
+      const formattedContent = {
+        type: 'doc',
+        content: data.bullets.map(bullet => {
+          const cleanBullet = bullet.trim()
+            .replace(/^["']|["']$/g, '') // Remove quotes
+            .replace(/^- /, '• ') // Replace dash with bullet
+
+          return {
+            type: 'paragraph',
+            content: [{
+              type: 'text',
+              text: cleanBullet
+            }]
+          }
+        })
       }
 
       setState(prev => ({
         ...prev,
-        generatedBullets: data.bullets,
+        generatedBullets: formattedContent,
         isGenerating: false
       }))
     } catch (error) {
@@ -755,15 +761,44 @@ const StarBuilder: React.FC = () => {
         body: JSON.stringify(requestData)
       })
 
+      const responseText = await response.text()
+      console.log('Raw response:', responseText)
+
       if (!response.ok) {
-        console.error('Response not OK:', response.status, response.statusText)
         throw new Error(`Failed to regenerate bullets: ${response.status}`)
       }
 
-      const data = await response.json()
+      // Extract JSON from the response
+      const jsonMatch = responseText.match(/\{[\s\S]*?\}(?=\s*$)/)?.[0] || 
+                       responseText.match(/\{\{[\s\S]*?\}\}/)?.[0]?.replace(/\{\{|\}\}/g, '')
+      
+      if (!jsonMatch) {
+        throw new Error('No valid JSON found in response')
+      }
+
+      const data = JSON.parse(jsonMatch)
+
+      // Transform bullets into TipTap JSON content
+      const formattedContent = {
+        type: 'doc',
+        content: data.bullets.map(bullet => {
+          const cleanBullet = bullet.trim()
+            .replace(/^["']|["']$/g, '') // Remove quotes
+            .replace(/^- /, '• ') // Replace dash with bullet
+
+          return {
+            type: 'paragraph',
+            content: [{
+              type: 'text',
+              text: cleanBullet
+            }]
+          }
+        })
+      }
+
       setState(prev => ({
         ...prev,
-        generatedBullets: data.bullets,
+        generatedBullets: formattedContent,
         isGenerating: false
       }))
     } catch (error) {
@@ -1353,7 +1388,7 @@ const StarBuilder: React.FC = () => {
                 <h2 className="text-2xl font-bold">Review Generated Output</h2>
                 <p className="text-gray-600">
                   See the STAR Bullets content below and make any edits if necessary. 
-                  Once you are happy with your information, click Complete Add Experience to save this experience
+                  Once you are happy with your information, click Save Experience to save this experience
                 </p>
               </div>
               <div className="flex gap-2">
@@ -1368,37 +1403,14 @@ const StarBuilder: React.FC = () => {
               <div className="group relative flex flex-col justify-between rounded-xl bg-white transform-gpu dark:bg-black dark:[border:1px_solid_rgba(255,255,255,.1)] dark:[box-shadow:0_-20px_80px_-20px_#ffffff1f_inset] col-span-3 lg:col-span-1">
                 <div className="flex flex-col border border-input shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary h-full min-h-56 w-full rounded-xl">
                   <MinimalTiptapEditor
-                    value={state.generatedBullets.join("\n")}
+                    value={state.generatedBullets}
                     onChange={(newContent) => {
                       setState(prev => ({ 
                         ...prev, 
-                        generatedBullets: String(newContent)
-                          .split('\n')
-                          .filter(Boolean)
+                        generatedBullets: newContent 
                       }))
                     }}
-                    extensions={[
-                      StarterKit.configure({
-                        bulletList: true,
-                        orderedList: true,
-                        heading: false,
-                        codeBlock: false,
-                      }),
-                      Underline,
-                      Placeholder.configure({
-                        placeholder: 'Type your bullets here...',
-                      }),
-                      Typography,
-                    ]}
-                    className="w-full"
-                    editorContentClassName="prose dark:prose-invert max-w-none overflow-auto h-full px-4 py-3"
-                    editorClassName="focus:outline-none h-full"
-                    output="html"
-                    placeholder="Type your bullets here..."
-                    autofocus={true}
-                    editable={true}
-                    throttleDelay={0}
-                    shouldRerenderOnTransaction={false}
+                    className="min-h-[200px] p-4"
                   />
                 </div>
               </div>
@@ -1521,33 +1533,37 @@ const StarBuilder: React.FC = () => {
       })
 
       const responseText = await response.text()
+      console.log('Raw response:', responseText)
       
-      // Extract JSON from the response
-      const jsonMatch = responseText.match(/\{[\s\S]*?\}(?=\s*$)/)?.[0]
-      if (!jsonMatch) {
-        throw new Error('No valid JSON found in response')
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status} - ${responseText}`)
       }
 
-      try {
-        const parsedData = JSON.parse(jsonMatch)
-        
-        // Handle both direct and nested response formats
-        const recommendations = parsedData.recommendations || {
-          situation: parsedData.situation || [],
-          task: parsedData.task || [],
-          action: parsedData.action || [],
-          result: parsedData.result || []
-        }
-
-        setState(prev => ({
-          ...prev,
-          recommendations,
-          isGenerating: false
+      const data = JSON.parse(responseText)
+      
+      // Transform the recommendations to ensure examples are properly structured
+      const transformRecommendations = (section: any[]) => {
+        return section.map(item => ({
+          ...item,
+          examples: item.examples.map((example: any) => ({
+            example1: example.example_1 || '',
+            example2: example.example_2 || ''
+          }))
         }))
-      } catch (parseError) {
-        console.error('Parse error:', parseError)
-        throw new Error('Failed to parse response data')
       }
+
+      const recommendations = {
+        situation: transformRecommendations(data.recommendations.situation || []),
+        task: transformRecommendations(data.recommendations.task || []),
+        action: transformRecommendations(data.recommendations.action || []),
+        result: transformRecommendations(data.recommendations.result || [])
+      }
+
+      setState(prev => ({
+        ...prev,
+        recommendations,
+        isGenerating: false
+      }))
     } catch (error) {
       console.error('Error:', error)
       setState(prev => ({
