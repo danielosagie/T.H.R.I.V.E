@@ -1424,15 +1424,7 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
               </div>
 
               <div className="flex justify-between items-center pt-4">
-                <Button 
-                  variant="outline"
-              onClick={handleSimulateData}
-              className="flex items-center gap-2"
-              disabled={state.isGenerating}
-            >
-              <Sparkles className="h-4 w-4" />
-              Load Test Data
-            </Button>
+                
             <Button 
               onClick={handleRegenerateRecommendations} 
               className="flex items-center gap-2"
@@ -1502,6 +1494,7 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  
                   <Button
                     variant="secondary"
                     onClick={handleRegenerateBullets}
@@ -1509,7 +1502,7 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
                     disabled={state.isGenerating}
                   >
                     <RefreshCw className={`mr-2 h-4 w-4 ${state.isGenerating ? 'animate-spin' : ''}`} />
-                    {state.isGenerating ? 'Generating...' : 'Regenerate Bullets'}
+                    {state.isGenerating ? 'Generating...' : 'Regenerate'}
                   </Button>
                   
                   <Button
@@ -1518,7 +1511,7 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
                     className="flex items-center gap-2"
                   >
                     <Copy className="h-4 w-4" />
-                    Copy Bullets
+                    Copy
                   </Button>
                 </div>
               </div>
@@ -1541,8 +1534,9 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
               </div>
             </TooltipProvider>
 
-              <div className="flex justify-between pt-4">
-                <div className="flex items-center gap-2">
+              <div className="flex justify-between items-center pt-4">
+                <div className="flex justify-between items-center w-full">
+                    
                   <TailorPositionDialog 
                     onTailor={handleTailorRegenerateBullets}
                     selectedPosition={selectedPosition}
@@ -1553,9 +1547,11 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
                   <Button
                     variant="outline"
                     onClick={() => setIsVersionSidebarOpen(true)}
-                    className="flex items-center ml-2"
+                    className="flex items-center ml-2 gap-2"
                   >
+                    
                     <History className="h-4 w-4" />
+                    Version History
                   </Button>
                 </div>
               </div>
@@ -1717,51 +1713,34 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
     }
   }, [state.basicInfo, state.starContent])
 
-  const handleSaveExperience = useCallback(async () => {
+  const handleSaveExperience = useCallback(() => {
     try {
-      // Get current experiences from localStorage
-      const savedExperiences = localStorage.getItem('starExperiences')
-      const experiences = savedExperiences ? JSON.parse(savedExperiences) : []
+      const savedExperiences = JSON.parse(localStorage.getItem('starExperiences') || '[]')
+      const experienceId = router.query?.id ? parseInt(router.query.id as string) : null
       
-      // Find the index of the experience we're editing
-      const experienceIndex = experiences.findIndex((exp: any) => exp.id === experienceId)
-      
-      // Create updated experience object
-      const updatedExperience = {
-        id: experienceId, // Keep the same ID
-        title: state.basicInfo.position,
-        company: state.basicInfo.company,
-        type: state.experienceType,
-        dateRange: state.basicInfo.dateRange,
-        bullets: state.generatedBullets,
-        starContent: state.starContent,
-        selected: false,
-        gradient: state.gradient,
-        recommendations: state.recommendations
+      if (experienceId) {
+        // Find and update existing experience
+        const updatedExperiences = savedExperiences.map((exp: any) => {
+          if (exp.id === experienceId) {
+            return {
+              ...exp,
+              ...state.basicInfo,
+              bullets: state.generatedBullets,
+              gradient: exp.gradient // Preserve the existing gradient
+            }
+          }
+          return exp
+        })
+        localStorage.setItem('starExperiences', JSON.stringify(updatedExperiences))
       }
-
-      if (experienceIndex !== -1) {
-        // Update existing experience
-        experiences[experienceIndex] = updatedExperience
-      } else {
-        console.error('Experience not found for editing')
-        toast.error('Failed to update experience')
-        return
-      }
-
-      // Save back to localStorage
-      localStorage.setItem('starExperiences', JSON.stringify(experiences))
       
-      // Show success message
-      toast.success('Experience updated successfully')
-      
-      // Navigate back to star page
       router.push('/star')
+      toast.success('Experience saved successfully!')
     } catch (error) {
-      console.error('Error saving experience:', error)
-      toast.error('Failed to update experience')
+      console.error('Save error:', error)
+      toast.error('Failed to save experience. Please try again.')
     }
-  }, [state, experienceId, router])
+  }, [state, router])
 
   const handleTailorRegenerateBullets = useCallback(async () => {
     setState(prev => ({ ...prev, isGenerating: true }))
@@ -1905,7 +1884,11 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
                 <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
                 <span className="font-semibold">THRIVE Toolkit</span>
               </Link>
-              <h2 className="text-2xl font-bold">Building Your STAR Bullets</h2>
+              <Link href="/star">
+                <h2 className="text-2xl font-bold hover:text-primary transition-colors cursor-pointer">
+                  Building Your STAR Bullets
+                </h2>
+              </Link>
               <Button 
                 variant="ghost" 
                 onClick={handleRestart}
@@ -1985,8 +1968,8 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
             <SheetTitle>Version History</SheetTitle>
           </SheetHeader>
           <div className="h-[calc(100vh-120px)] overflow-y-auto pr-4 mt-4">
-            {bulletVersions.map((version, index) => (
-              <div key={version.id} className="border rounded-lg p-4 mb-4">
+            {bulletVersions?.map((version, index) => (
+              <div key={`version-${version.id}-${index}`} className="border rounded-lg p-4 mb-4">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">Version {bulletVersions.length - index}</span>
@@ -2017,8 +2000,8 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
                       Show content preview
                     </summary>
                     <div className="mt-2 p-2 bg-muted rounded-md">
-                      {version.content.content?.map((bullet: any, i: number) => (
-                        <div key={i} className="mb-1">
+                      {version.content?.content?.map((bullet: any, i: number) => (
+                        <div key={`bullet-${version.id}-${i}`} className="mb-1">
                           {bullet.content?.[0]?.text}
                         </div>
                       ))}

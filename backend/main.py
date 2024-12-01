@@ -540,7 +540,7 @@ Enhanced Bullet: "- Provided tailored customer assistance, addressing inquiries 
 Your response should maintain this format and approach.
  """
 
-        input_prompt = f"""Review and enhance the provided resume content, transforming it into a efficient, strong, concise, but very impactful resume bullets. If the content is basic, improve it with context, measurable results, and clarity. If it is already improved, refine it for conciseness and impact. Do not over-improve it. Focus on efficiency and impact but CLEAR STORYTELLING. Keep the response formatted as resume-style bullet points, no sub-bullets but still impactful and telling of the full story. Here is the data you are making changes to:
+        input_prompt = f"""Review and enhance the provided resume content, transforming it into a efficient, strong, concise, but very impactful resume bullets. If the content is basic, improve it with context, measurable results, and clarity. If it is already improved, refine it for conciseness and impact. Do not over-improve it. Focus on efficiency and impact but CLEAR STORYTELLING. Keep the response formatted as resume-style bullet points, no sub-bullets but still impactful and telling of the full story. Here is the data you are making changes to. Try not to change the original type of content too much like saying Spearheaded when they didnt say they lead anything unless there was undertones in there that they did:
 
 Company: {basic_info.get('company', '')}
 Position: {basic_info.get('position', '')}
@@ -632,10 +632,13 @@ Please keep the bullets related to the original job, but also incorporate elemen
 5. Following any specific tailoring instructions provided
 
 Guidelines:
-- Keep bullets concise but impactful (max 2 lines each)
+- Keep bullets concise but impactful (max 1 lines each & 4 bullets total unless instructed otherwise)
 - Include measurable results where present
 - Use industry-specific terminology from the target role
 - Maintain professional resume formatting
+Please remember the following text. 
+
+Add any words that I am missing without changing the original content. The changes should not exceed 3% and should not include any statements about company values or any additional information in the bullet points. Just make your changes.
 - Focus on transferable skills when changing industries
 - Prioritize keywords from the job description without keyword stuffing. If I provide special instructions, follow them and put them in the brackets do not say anything extra after just acheive the task in front of you."""
 
@@ -658,14 +661,16 @@ Industry: {industry_str}
 CURRENT BULLETS:
 {current_bullets}
 
-Please tailor these bullets to:
-1. Match the target position's requirements
-2. Include key terms from the job description
-3. Highlight transferable skills
-4. Maintain the core achievements. Please keep the bullets related to the original job, but also incorporate elements that would appeal to the position we desire. Avoid making it too obvious that we are tailoring the content for that job by not explicitly stating the specific position we are applying for or removing every detail from the original role. The adjustments should be subtle, with a moderate level of tailoring.
-5. Follow any special instructions provided
+Please remember the following text. 
 
-Format the response as a JSON object with an array of bullets without any extra text or notes:
+Add any words that I am missing without changing the original content. The changes should not exceed 3% and should not include any statements about company values or any additional information in the bullet points. Just make your changes.
+
+Please tailor these bullets to:
+1. Include key terms from the job description
+2. Highlight transferable skills
+3. Maintain the core achievements. Please keep the bullets related to the original job, but also incorporate elements that would appeal to the position we desire. Avoid making it too obvious that we are tailoring the content for that job by not explicitly stating the specific position we are applying for or removing every detail from the original role. The adjustments should be subtle, with a moderate level of tailoring.
+
+Format the response as a JSON object with an array of bullets without any extra text or notes. ONLY 4 BULLETS UNLESS INSTRUCTED OTHERWISE:
 {{{{
     "bullets": [
         "- Tailored bullet 1",

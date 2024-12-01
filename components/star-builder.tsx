@@ -1703,7 +1703,11 @@ const StarBuilder: React.FC = () => {
                 <Image src="/assets/logo.svg" alt="THRIVE Toolkit Logo" width={24} height={24} />
                 <span className="font-semibold">THRIVE Toolkit</span>
               </Link>
-              <h2 className="text-2xl font-bold">Building Your STAR Bullets</h2>
+              <Link href="/star">
+                <h2 className="text-2xl font-bold hover:text-primary transition-colors cursor-pointer">
+                  Building Your STAR Bullets
+                </h2>
+              </Link>
               <Button 
                 variant="ghost" 
                 onClick={handleRestart}

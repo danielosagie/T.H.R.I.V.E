@@ -2,13 +2,18 @@ interface Experience {
   id: number
   title: string
   company: string
-  type: string
-  dateRange: DateRange
+  type: 'work' | 'volunteer' | 'school'
+  dateRange: {
+    startMonth: string
+    startYear: string
+    endMonth: string
+    endYear: string
+  }
   bullets: string[]
   selected: boolean
   gradient: string
-  starContent: StarContent
-  recommendations: Recommendations
+  starContent?: StarContent
+  recommendations?: Recommendations
 }
 
 interface BulletVersion {

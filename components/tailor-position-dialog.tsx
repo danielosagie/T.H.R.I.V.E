@@ -88,7 +88,7 @@ export function TailorPositionDialog({ onTailor, selectedPosition, onPositionSel
       </Button>
 
       <Button
-        variant="default"
+        variant="secondary"
         onClick={() => {
           if (!selectedPosition) {
             toast.error("Please select or create a position first")
@@ -98,7 +98,7 @@ export function TailorPositionDialog({ onTailor, selectedPosition, onPositionSel
         }}
         className="flex items-center gap-2"
       >
-        <Sparkles className="h-4 w-4" />
+        <Sparkles className="h-4 w-4" fill="white" />
         Tailor to Position
       </Button>
 

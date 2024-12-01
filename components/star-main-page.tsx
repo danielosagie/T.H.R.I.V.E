@@ -34,6 +34,35 @@ interface StarMainPageProps {
   onDelete: (id: number) => void
 }
 
+const generateGradient = () => {
+  const gradients = [
+    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'linear-gradient(135deg, #2af598 0%, #009efd 100%)',
+    'linear-gradient(135deg, #b721ff 0%, #21d4fd 100%)',
+    'linear-gradient(135deg, #fd6585 0%, #0d25b9 100%)',
+    'linear-gradient(135deg, #f6d365 0%, #fda085 100%)',
+    'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)',
+    'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+  ]
+  return gradients[Math.floor(Math.random() * gradients.length)]
+}
+
+const defaultExperience: Experience = {
+  id: Date.now(),
+  title: '',
+  company: '',
+  type: 'work',
+  dateRange: {
+    startMonth: '',
+    startYear: '',
+    endMonth: '',
+    endYear: ''
+  },
+  bullets: [],
+  selected: false,
+  gradient: generateGradient()
+}
+
 export function StarMainPage({ 
   experiences: propExperiences,
   onAddNew,
@@ -58,11 +87,23 @@ export function StarMainPage({
   const selectedCount = experiences.filter(exp => exp.selected).length
 
   const handleAddNew = () => {
+    const newExperience = {
+      ...defaultExperience,
+      id: Date.now(),
+      gradient: generateGradient()
+    }
+    localStorage.setItem('newExperience', JSON.stringify(newExperience))
     router.push('/starinput')
   }
 
   const handleEdit = useCallback((id: number) => {
     try {
+      const experiences = JSON.parse(localStorage.getItem('starExperiences') || '[]')
+      const experienceToEdit = experiences.find((exp: Experience) => exp.id === id)
+      if (experienceToEdit && !experienceToEdit.gradient) {
+        experienceToEdit.gradient = generateGradient()
+      }
+      localStorage.setItem('editExperience', JSON.stringify(experienceToEdit))
       router.push(`/starinput/edit/${id}`)
     } catch (error) {
       console.error('Navigation error:', error)
