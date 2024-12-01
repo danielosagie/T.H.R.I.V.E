@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Download, Plus, X, Pencil, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { toast } from "react-hot-toast"
 
 interface Experience {
   id: number
@@ -25,18 +26,30 @@ interface Experience {
   gradient: string
 }
 
-export function StarMainPage() {
-  const [experiences, setExperiences] = useState<Experience[]>([])
+interface StarMainPageProps {
+  experiences: Experience[]
+  onAddNew: () => void
+  onEdit: (id: number) => void
+  onExport: (selectedIds: number[]) => void
+  onDelete: (id: number) => void
+}
+
+export function StarMainPage({ 
+  experiences: propExperiences,
+  onAddNew,
+  onEdit,
+  onExport,
+  onDelete 
+}: StarMainPageProps) {
+  const [experiences, setExperiences] = useState<Experience[]>(propExperiences)
   const [activeTab, setActiveTab] = useState<'all' | 'work' | 'volunteer' | 'school'>('all')
   const [isExporting, setIsExporting] = useState(false)
   const router = useRouter()
+  const [isNavigating, setIsNavigating] = useState(false)
 
   useEffect(() => {
-    const savedExperiences = localStorage.getItem('starExperiences')
-    if (savedExperiences) {
-      setExperiences(JSON.parse(savedExperiences))
-    }
-  }, [])
+    setExperiences(propExperiences)
+  }, [propExperiences])
 
   const filteredExperiences = experiences.filter(exp => 
     activeTab === 'all' ? true : exp.type === activeTab
@@ -48,15 +61,14 @@ export function StarMainPage() {
     router.push('/starinput')
   }
 
-  const handleEdit = (id: number) => {
-    // Find the experience to edit
-    const experience = experiences.find(exp => exp.id === id)
-    if (experience) {
-      // Save the current state to localStorage for editing
-      localStorage.setItem('editExperience', JSON.stringify(experience))
-      router.push('/starinput')
+  const handleEdit = useCallback((id: number) => {
+    try {
+      router.push(`/starinput/edit/${id}`)
+    } catch (error) {
+      console.error('Navigation error:', error)
+      toast.error('Failed to navigate to edit page. Please try again.')
     }
-  }
+  }, [router])
 
   const handleDelete = (id: number) => {
     const updatedExperiences = experiences.filter(exp => exp.id !== id)
@@ -76,10 +88,8 @@ export function StarMainPage() {
 
   const handleExport = () => {
     if (isExporting) {
-      // Save selected state to localStorage
-      localStorage.setItem('starExperiences', JSON.stringify(experiences))
-      // Navigate to export page (correct URL)
-      router.push('/star-export')
+      const selectedIds = experiences.filter(exp => exp.selected).map(exp => exp.id)
+      onExport(selectedIds)
     } else {
       setIsExporting(true)
     }
@@ -157,6 +167,7 @@ export function StarMainPage() {
                         variant="ghost" 
                         size="sm" 
                         onClick={() => handleEdit(experience.id)}
+                        disabled={isNavigating}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>

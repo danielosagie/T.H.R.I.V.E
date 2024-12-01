@@ -1,5 +1,5 @@
-import { StarMainPage } from "@/components/star-main-page"
+import StarClient from "./client"
 
 export default function StarPage() {
-  return <StarMainPage />
+  return <StarClient />
 } 

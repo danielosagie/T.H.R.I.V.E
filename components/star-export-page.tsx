@@ -12,6 +12,8 @@ import { Document, Packer, Paragraph, HeadingLevel, AlignmentType } from "docx"
 import { saveAs } from "file-saver"
 import { useRouter } from "next/navigation"
 import { getExperienceData } from "@/lib/data"
+import confetti from "canvas-confetti"
+import { ArrowLeft, Home } from "lucide-react"
 
 interface Experience {
   id: number
@@ -102,35 +104,63 @@ export function StarExportPage() {
   const exportAsImage = async () => {
     if (cardRef.current) {
       try {
+        const element = cardRef.current;
         const margin = 40;
-        const canvas = await html2canvas(cardRef.current, {
-          backgroundColor: null,
-          scale: 2,
+        
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = `
+          padding: 1.5rem;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+          background: ${background};
+          width: fit-content;
+          position: absolute;
+          left: 0;
+          top: 0;
+          display: inline-block;
+        `;
+        
+        const clone = element.cloneNode(true) as HTMLElement;
+        clone.style.cssText = `
+          width: auto;
+          height: auto;
+          display: block;
+          max-width: none;
+          margin: 0;
+          background: transparent;
+        `;
+        
+        // Fix bullet point styling
+        const bullets = clone.getElementsByClassName('bullet');
+        Array.from(bullets).forEach(bullet => {
+          (bullet as HTMLElement).style.cssText = `
+            display: block;
+            line-height: 1.5;
+            margin: 0.5rem 0;
+            padding: 0.25rem 0;
+          `;
         });
-        const newCanvas = document.createElement("canvas");
-        const ctx = newCanvas.getContext("2d");
-        if (ctx) {
-          newCanvas.width = canvas.width + 2 * margin;
-          newCanvas.height = canvas.height + 2 * margin;
-          
-          const gradientColors = background.match(/rgba?\([\d\s,\.]+\)/g);
-          if (gradientColors && gradientColors.length >= 2) {
-            const gradient = ctx.createLinearGradient(0, 0, newCanvas.width, newCanvas.height);
-            gradient.addColorStop(0, gradientColors[0]);
-            gradient.addColorStop(1, gradientColors[1]);
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
-          }
-          
-          ctx.drawImage(canvas, margin, margin);
-        }
-        const image = newCanvas.toDataURL("image/png");
-        const link = document.createElement("a");
+        
+        tempContainer.appendChild(clone);
+        document.body.appendChild(tempContainer);
+
+        const canvas = await html2canvas(tempContainer, {
+          scale: 4,
+          useCORS: true,
+          backgroundColor: null,
+          width: tempContainer.offsetWidth + margin,
+          height: tempContainer.offsetHeight + margin
+        });
+
+        document.body.removeChild(tempContainer);
+        
+        const image = canvas.toDataURL('image/png', 1.0);
+        const link = document.createElement('a');
         link.href = image;
-        link.download = "experience-card.png";
+        link.download = 'star-bullets.png';
         link.click();
       } catch (error) {
-        console.error("Error exporting image:", error);
+        console.error('Error exporting image:', error);
       }
     }
   };
@@ -138,99 +168,194 @@ export function StarExportPage() {
   const exportAsPDF = async () => {
     if (cardRef.current) {
       try {
-        const margin = 40;
-        const canvas = await html2canvas(cardRef.current, {
+        const element = cardRef.current;
+        const margin = 0;
+        
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = `
+          padding: 1.5rem;
+          border-radius: 2px;
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+          background: ${background};
+          width: fit-content;
+          position: absolute;
+          left: 0;
+          top: 0;
+          display: inline-block;
+        `;
+        
+        const clone = element.cloneNode(true) as HTMLElement;
+        clone.style.cssText = `
+          width: auto;
+          height: auto;
+          display: block;
+          max-width: none;
+          margin: 0;
+          background: transparent;
+        `;
+        
+        // Fix bullet point styling
+        const bullets = clone.getElementsByClassName('bullet');
+        Array.from(bullets).forEach(bullet => {
+          (bullet as HTMLElement).style.cssText = `
+            display: block;
+            line-height: 1.5;
+            margin: 0.5rem 0;
+            padding: 0.25rem 0;
+          `;
+        });
+        
+        tempContainer.appendChild(clone);
+        document.body.appendChild(tempContainer);
+
+        const contentWidth = tempContainer.offsetWidth;
+        const contentHeight = tempContainer.offsetHeight;
+
+        const canvas = await html2canvas(tempContainer, {
+          scale: 4,
+          useCORS: true,
           backgroundColor: null,
-          scale: 2,
+          width: contentWidth,
+          height: contentHeight
         });
+
+        document.body.removeChild(tempContainer);
+
         const pdf = new jsPDF({
-          orientation: "landscape",
-          unit: "px",
-          format: [canvas.width + 2 * margin, canvas.height + 2 * margin]
+          orientation: contentWidth > contentHeight ? 'landscape' : 'portrait',
+          unit: 'px',
+          format: [contentWidth + (margin), contentHeight + (margin)]
         });
+
+        pdf.addImage(
+          canvas.toDataURL('image/png'), 
+          'PNG',
+          margin / 2,
+          margin / 2,
+          contentWidth,
+          contentHeight
+        );
         
-        const gradientColors = background.match(/rgba?\([\d\s,\.]+\)/g);
-        if (gradientColors && gradientColors.length >= 2) {
-          const startColor = gradientColors[0];
-          const endColor = gradientColors[1];
-          const width = pdf.internal.pageSize.getWidth();
-          const height = pdf.internal.pageSize.getHeight();
-          
-          for (let i = 0; i <= height; i++) {
-            const factor = i / height;
-            const r = Math.round(parseInt(startColor.split(",")[0].slice(5)) * (1 - factor) + parseInt(endColor.split(",")[0].slice(5)) * factor);
-            const g = Math.round(parseInt(startColor.split(",")[1]) * (1 - factor) + parseInt(endColor.split(",")[1]) * factor);
-            const b = Math.round(parseInt(startColor.split(",")[2]) * (1 - factor) + parseInt(endColor.split(",")[2]) * factor);
-            pdf.setDrawColor(r, g, b);
-            pdf.line(0, i, width, i);
-          }
-        }
-        
-        pdf.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, canvas.width, canvas.height);
-        pdf.save("experience-card.pdf");
+        pdf.save('star-bullets.pdf');
       } catch (error) {
-        console.error("Error exporting PDF:", error);
+        console.error('Error exporting PDF:', error);
       }
     }
   };
 
   const exportAsDOCX = () => {
+    // Define consistent styles
+    const headingStyle = {
+      size: 32,
+      bold: true,
+    };
+
+    const subHeadingStyle = {
+      size: 28,
+      bold: true,
+    };
+
+    const normalStyle = {
+      size: 24,
+    };
+
     const doc = new Document({
       sections: [{
         properties: {},
         children: [
           new Paragraph({
-            text: currentExperience?.name || "",
+            text: "STAR EXPERIENCE BULLETS",
             heading: HeadingLevel.HEADING_1,
             alignment: AlignmentType.CENTER,
+            style: headingStyle,
           }),
-          new Paragraph({
-            text: "City, State ZIP • Professional Email Address Phone Number Portfolio/LinkedIn",
-            alignment: AlignmentType.CENTER,
-          }),
-          new Paragraph({
-            text: "EDUCATION",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          ...currentExperience?.qualificationsAndEducation.map(qual => 
-            new Paragraph({ text: qual })
-          ),
-          new Paragraph({
-            text: "RELEVANT EXPERIENCE",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          ...currentExperience?.lifeExperiences.map(exp => 
-            new Paragraph({ text: `• ${exp}` })
-          ),
-          new Paragraph({
-            text: "SKILLS",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          ...currentExperience?.skills.map(skill => 
-            new Paragraph({ text: `• ${skill}` })
-          ),
-          new Paragraph({
-            text: "STRENGTHS",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          ...currentExperience?.strengths.map(strength => 
-            new Paragraph({ text: `• ${strength}` })
-          ),
-          new Paragraph({
-            text: "VALUE PROPOSITION",
-            heading: HeadingLevel.HEADING_2,
-          }),
-          ...currentExperience?.valueProposition.map(value => 
-            new Paragraph({ text: `• ${value}` })
-          ),
+          
+          // Map through selected experiences
+          ...selectedExperiences.flatMap(exp => [
+            // Company and Position Header
+            new Paragraph({
+              text: exp.company,
+              style: subHeadingStyle,
+              spacing: {
+                before: 400,
+              },
+            }),
+            new Paragraph({
+              text: exp.title,
+              style: normalStyle,
+              italic: true,
+            }),
+            new Paragraph({
+              text: `${exp.dateRange.startMonth} ${exp.dateRange.startYear} - ${exp.dateRange.endMonth} ${exp.dateRange.endYear}`,
+              style: normalStyle,
+            }),
+            
+            // Experience Bullets
+            ...exp.bullets.map(bullet => 
+              new Paragraph({
+                text: `• ${bullet}`,
+                style: normalStyle,
+                indent: {
+                  left: 720, // 0.5 inch indent
+                },
+                spacing: {
+                  before: 200,
+                  after: 200,
+                },
+              })
+            ),
+            
+            // Add spacing between experiences
+            new Paragraph({
+              text: "",
+              spacing: {
+                before: 400,
+              },
+            }),
+          ]),
         ],
       }],
-    })
+    });
 
     Packer.toBlob(doc).then(blob => {
-      saveAs(blob, "experience-card.docx")
-    })
-  }
+      saveAs(blob, "star-bullets.docx");
+    });
+  };
+
+  const handleConfetti = () => {
+    const end = Date.now() + 3 * 1000; // 3 seconds
+    const colors = ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"];
+
+    const frame = () => {
+      if (Date.now() > end) return;
+
+      confetti({
+        particleCount: 2,
+        angle: 60,
+        spread: 55,
+        startVelocity: 60,
+        origin: { x: 0, y: 0.5 },
+        colors: colors,
+      });
+      confetti({
+        particleCount: 2,
+        angle: 120,
+        spread: 55,
+        startVelocity: 60,
+        origin: { x: 1, y: 0.5 },
+        colors: colors,
+      });
+
+      requestAnimationFrame(frame);
+    };
+
+    frame();
+  };
+
+  // Fire confetti on page load
+  useEffect(() => {
+    handleConfetti();
+  }, []);
 
   return (
     <div className="h-screen overflow-hidden flex w-full">
@@ -240,50 +365,66 @@ export function StarExportPage() {
           className="mb-4"
           onClick={handleGoToSTAR}
         >
-          &lt; Back to STAR Bullets
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to STAR Bullets
         </Button>
-        <div className="flex flex-col items-center justify-between space-y-4">
-          <h1 className="text-2xl font-bold mb-4">
-            Congratulations, {firstName}!
-          </h1>
-          <p className="text-sm text-start mt-2 m-1">
-            This is only the beginning. You are going to go so far.
-          </p>
-          <div className="space-y-4">
-            <Button className="w-full" onClick={exportAsImage}>Export as Image</Button>
-            <Button className="w-full" onClick={exportAsDOCX}>Export as DOCX</Button>
-            <Button className="w-full" onClick={exportAsPDF}>Export as PDF</Button>
-          </div>
-          <div className="mt-8">
-            <div className="flex items-center my-4">
-              <div className="flex-grow h-px bg-gray-300"></div>
-              <p className="text-sm text-gray-600 px-3">OR CONTINUE TO</p>
-              <div className="flex-grow h-px bg-gray-300"></div>
-            </div>
-            <div className="items-center">
-              <h1 className="text-2xl justify-between text-center font-bold">
-                STAR Bullets
-              </h1>
-              <p className="text-sm text-start mt-2 m-1">
-                Ready to fine-tune your experiences for a resume or job interview?
+        
+        {/* Center container */}
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-120px)]">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-6">
+              <Button
+                onClick={handleConfetti}
+                className="text-2xl font-bold mb-4 bg-transparent hover:bg-transparent p-0 border-none shadow-none text-black w-full text-center whitespace-normal"
+              >
+                Congratulations, {firstName}! 🎉
+              </Button>
+              <p className="text-sm text-center mt-2">
+                This is only the beginning. You are going to go so far.
               </p>
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={handleGoToSTAR}
-              >
-                Build STAR Bullets
-              </Button>
-              <Button 
-                className="w-full mt-4"
-                onClick={handleGoHome}
-              >
-                Homepage
-              </Button>
+            </div>
+
+            <div className="space-y-4">
+              <Button className="w-full" onClick={exportAsImage}>Export as Image</Button>
+              <Button className="w-full" onClick={exportAsDOCX}>Export as DOCX</Button>
+              <Button className="w-full" onClick={exportAsPDF}>Export as PDF</Button>
+            </div>
+
+            <div className="mt-8">
+              <div className="flex items-center my-4">
+                <div className="flex-grow h-px bg-gray-300"></div>
+                <p className="text-sm text-gray-600 px-3">OR CONTINUE TO</p>
+                <div className="flex-grow h-px bg-gray-300"></div>
+              </div>
+
+              <div className="text-center">
+                <h1 className="text-2xl font-bold mb-2">
+                  Experience Card
+                </h1>
+                <p className="text-sm mb-4">
+                  Want to learn more about yourself & skills?
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="w-full mb-4"
+                  onClick={handleGoToExp}
+                >
+                  Build Experience Card
+                </Button>
+                <Button 
+                  className="w-full"
+                  onClick={handleGoHome}
+                >
+                  <Home className="mr-2 h-4 w-4" />
+                  Homepage
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+      
+      {/* Right side content remains the same */}
       <div className="w-[70%] p-8 h-screen overflow-y-auto" style={{ background }}>
         <div className="flex justify-between items-center mb-6">
           <Tabs value={cardView} onValueChange={(value) => setCardView(value as "experience" | "resume")}>

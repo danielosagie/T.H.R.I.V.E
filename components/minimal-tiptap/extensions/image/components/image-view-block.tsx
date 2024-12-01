@@ -12,6 +12,7 @@ import { InfoCircledIcon, TrashIcon } from '@radix-ui/react-icons'
 import { ImageOverlay } from './image-overlay'
 import { Spinner } from '../../../components/spinner'
 import type { UploadReturnType } from '../image'
+import Image from 'next/image'
 
 const MAX_HEIGHT = 600
 const MIN_HEIGHT = 120
@@ -220,7 +221,11 @@ export const ImageViewBlock: React.FC<NodeViewProps> = ({ editor, node, selected
                 isZoomed={imageState.isZoomed}
                 onZoomChange={() => setImageState(prev => ({ ...prev, isZoomed: false }))}
               >
-                <img
+                <Image
+                  src={imageState.src}
+                  alt={node.attrs.alt || ''}
+                  width={currentWidth || 0}
+                  height={currentHeight || 0}
                   className={cn('h-auto rounded object-contain transition-shadow', {
                     'opacity-0': !imageState.imageLoaded || imageState.error
                   })}
@@ -229,14 +234,7 @@ export const ImageViewBlock: React.FC<NodeViewProps> = ({ editor, node, selected
                     minWidth: `${MIN_WIDTH}px`,
                     maxHeight: MAX_HEIGHT
                   }}
-                  width={currentWidth}
-                  height={currentHeight}
-                  src={imageState.src}
-                  onError={handleImageError}
-                  onLoad={handleImageLoad}
-                  alt={node.attrs.alt || ''}
-                  title={node.attrs.title || ''}
-                  id={node.attrs.id}
+                  unoptimized={true}
                 />
               </ControlledZoom>
             </div>

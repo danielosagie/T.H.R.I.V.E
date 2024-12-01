@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, ArrowRight, Copy, Download, Pencil, RefreshCw, FileText, Sparkles } from "lucide-react"
+import { ArrowLeft, ArrowRight, Copy, Download, Pencil, RefreshCw, FileText, Sparkles, History } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import Recommendations from "./recommendations"
@@ -38,6 +38,8 @@ import Placeholder from '@tiptap/extension-placeholder'
 import Typography from '@tiptap/extension-typography'
 import { toast } from 'sonner'
 import { Toaster } from 'sonner'
+import { TailorPositionDialog } from "./tailor-position-dialog"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 interface Industry {
   category: string;
@@ -412,24 +414,83 @@ const MinimalEditor = ({ value, onChange, ...props }) => {
   )
 }
 
-const StarBuilder: React.FC = () => {
+interface EditStarBuilderProps {
+  experienceId: number
+}
+
+interface EditStarBuilderProps {
+  experienceId: number
+}
+
+const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [state, setState] = useState<StarBuilderState>(() => {
-    const storedData = localStorage.getItem('starBuilderData')
-    if (storedData) {
-      const parsedData = JSON.parse(storedData)
-      return {
-        ...initialState,
-        ...parsedData,
-        currentStep: parsedData.currentStep || 0
+    if (typeof window !== 'undefined') {
+      const savedExperiences = localStorage.getItem('starExperiences')
+      if (savedExperiences) {
+        const experiences = JSON.parse(savedExperiences)
+        const experienceToEdit = experiences.find((exp: any) => exp.id === experienceId)
+        if (experienceToEdit) {
+          return {
+            ...initialState,
+            currentStep: 3,
+            experienceType: experienceToEdit.type,
+            basicInfo: {
+              company: experienceToEdit.company,
+              position: experienceToEdit.title,
+              industries: experienceToEdit.industries,
+              dateRange: {
+                startMonth: experienceToEdit.dateRange.startMonth,
+                startYear: experienceToEdit.dateRange.startYear,
+                endMonth: experienceToEdit.dateRange.endMonth,
+                endYear: experienceToEdit.dateRange.endYear
+              }
+            },
+            starContent: {
+              situation: experienceToEdit.starContent.situation,
+              task: experienceToEdit.starContent.task,
+              actions: experienceToEdit.starContent.actions,
+              results: experienceToEdit.starContent.results
+            },
+            recommendations: {
+              situation: experienceToEdit.recommendations.situation,
+              task: experienceToEdit.recommendations.task,
+              action: experienceToEdit.recommendations.action,
+              result: experienceToEdit.recommendations.result
+            },
+            generatedBullets: experienceToEdit.bullets,
+            activeSection: "situation",
+            isGenerating: false,
+            lastSaved: new Date().toLocaleString()
+          }
+        }
       }
     }
     return initialState
   })
-
-  const [industrySearch, setIndustrySearch] = useState("")
-
-  const router = useRouter()
+  const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
+  const [bulletVersions, setBulletVersions] = useState<BulletVersion[]>(() => {
+    if (typeof window !== 'undefined') {
+      const savedExperiences = localStorage.getItem('starExperiences')
+      if (savedExperiences) {
+        const experiences = JSON.parse(savedExperiences)
+        const experienceToEdit = experiences.find((exp: any) => exp.id === experienceId)
+        if (experienceToEdit) {
+          const originalVersion = {
+            content: experienceToEdit.bullets,
+            timestamp: Date.now(),
+            type: 'original',
+            label: 'Original Version'
+          }
+          const savedVersions = localStorage.getItem(`bulletVersions_${experienceId}`)
+          return savedVersions ? [originalVersion, ...JSON.parse(savedVersions)] : [originalVersion]
+        }
+      }
+    }
+    return []
+  })
+  const [isVersionSidebarOpen, setIsVersionSidebarOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -463,6 +524,11 @@ const StarBuilder: React.FC = () => {
         console.error('Error parsing saved state:', error)
       }
     }
+  }, [])
+
+  useEffect(() => {
+    // Clear any draft state when editing an existing experience
+    localStorage.removeItem('starBuilderDraft')
   }, [])
 
   const handleSimulateData = useCallback(() => {
@@ -562,13 +628,13 @@ const StarBuilder: React.FC = () => {
     }
   }, [state.basicInfo, state.starContent])
 
-  const handleExperienceTypeSelect = useCallback((type: "work" | "volunteer" | "school") => {
+  const handleExperienceTypeSelect = (type: "work" | "volunteer" | "school") => {
     setState(prev => ({
       ...prev,
       experienceType: type,
-      currentStep: prev.currentStep + 1
+      currentStep: 1
     }))
-  }, [])
+  }
 
   const handleNext = useCallback(() => {
     setState(prev => ({ ...prev, currentStep: Math.min(prev.currentStep + 1, steps.length - 1) }))
@@ -717,42 +783,17 @@ const StarBuilder: React.FC = () => {
   }, [state.generatedBullets])
 
   const handleRegenerateBullets = useCallback(async () => {
-    if (!state.basicInfo.company || !state.basicInfo.position) {
-      toast.error("Please fill in company and position information")
-      return
-    }
-
-    if (!state.starContent.situation || !state.starContent.task || 
-        !state.starContent.actions || !state.starContent.results) {
-      toast.error("Please fill in all STAR content sections")
-      return
-    }
-
-    setState(prev => ({
-      ...prev,
-      isGenerating: true
-    }))
-
-    const requestData = {
-      basic_info: {
-        company: state.basicInfo.company,
-        position: state.basicInfo.position,
-        industry: state.basicInfo.industries
-      },
-      star_content: {
-        situation: state.starContent.situation,
-        task: state.starContent.task,
-        actions: state.starContent.actions,
-        results: state.starContent.results
-      },
-      recommendations: state.recommendations
-    }
-
-    console.log('Sending regenerate request data:', requestData)
-
+    setState(prev => ({ ...prev, isGenerating: true }))
     try {
       const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/bullets`
-      console.log('Attempting to regenerate bullets from:', apiUrl)
+      console.log('Attempting to regenerate bullets:', {
+        url: apiUrl,
+        data: {
+          basic_info: state.basicInfo,
+          star_content: state.starContent,
+          recommendations: state.recommendations
+        }
+      })
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -760,14 +801,28 @@ const StarBuilder: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({
+          basic_info: {
+            company: state.basicInfo.company,
+            position: state.basicInfo.position,
+            industry: state.basicInfo.industries
+          },
+          star_content: {
+            situation: state.starContent.situation,
+            task: state.starContent.task,
+            actions: state.starContent.actions,
+            results: state.starContent.results
+          },
+          recommendations: state.recommendations
+        })
       })
 
+      console.log('Response status:', response.status)
       const responseText = await response.text()
       console.log('Raw response:', responseText)
 
       if (!response.ok) {
-        throw new Error(`Failed to regenerate bullets: ${response.status}`)
+        throw new Error(`Failed to regenerate bullets: ${response.status} ${responseText}`)
       }
 
       // Extract JSON from the response
@@ -780,76 +835,74 @@ const StarBuilder: React.FC = () => {
 
       const data = JSON.parse(jsonMatch)
 
-      // Transform bullets into TipTap JSON content
-      const formattedContent = {
+      // Format the response bullets
+      const formattedBullets = {
         type: 'doc',
-        content: data.bullets.map(bullet => {
-          const cleanBullet = bullet.trim()
-            .replace(/^["']|["']$/g, '') // Remove quotes
-            .replace(/^- /, ' ') // Replace dash with bullet
-
-          return {
-            type: 'paragraph',
-            content: [{
-              type: 'text',
-              text: cleanBullet
-            }]
-          }
-        })
+        content: data.bullets.map(bullet => ({
+          type: 'paragraph',
+          content: [{ type: 'text', text: bullet }]
+        }))
       }
 
       setState(prev => ({
         ...prev,
-        generatedBullets: formattedContent,
+        generatedBullets: formattedBullets,
         isGenerating: false
       }))
+
+      // Add version tracking
+      const newVersion = {
+        content: state.generatedBullets,
+        timestamp: Date.now(),
+        type: 'regenerate'
+      }
+      const updatedVersions = [...bulletVersions, newVersion]
+      setBulletVersions(updatedVersions)
+      localStorage.setItem(`bulletVersions_${experienceId}`, JSON.stringify(updatedVersions))
     } catch (error) {
       console.error('Error regenerating bullets:', error)
       setState(prev => ({
         ...prev,
         isGenerating: false
       }))
-      toast.error("Failed to regenerate bullets. Sometimes the API is busy, please try again.")
+      toast.error("Failed to regenerate bullets. Please check console for details.")
     }
   }, [state.basicInfo, state.starContent, state.recommendations])
 
-  const handleAddExperience = useCallback(async () => {
+  const handleUpdateExperience = useCallback(() => {
+    if (!mounted) return
+    
     try {
-      // Get existing experiences
       const savedExperiences = localStorage.getItem('starExperiences')
-      const experiences = savedExperiences ? JSON.parse(savedExperiences) : []
-      
-      // Create new experience object
-      const newExperience = {
-        id: Date.now(),
-        title: state.basicInfo.position,
-        company: state.basicInfo.company,
-        type: state.experienceType,
-        dateRange: state.basicInfo.dateRange,
-        bullets: state.generatedBullets,
-        selected: false,
-        gradient: getRandomGradient(),
+      if (savedExperiences) {
+        const experiences = JSON.parse(savedExperiences)
+        const index = experiences.findIndex((exp: any) => exp.id === experienceId)
+        
+        if (index !== -1) {
+          experiences[index] = {
+            ...experiences[index],
+            id: experienceId, // Preserve the original ID
+            title: state.basicInfo.position,
+            company: state.basicInfo.company,
+            type: state.experienceType,
+            dateRange: state.basicInfo.dateRange,
+            bullets: state.generatedBullets,
+            starContent: state.starContent,
+            recommendations: state.recommendations,
+            // Preserve the original gradient
+            gradient: experiences[index].gradient
+          }
+          
+          localStorage.setItem('starExperiences', JSON.stringify(experiences))
+          toast.success("Experience updated successfully!")
+          router.push('/star')
+        }
       }
-      
-      // Add new experience to array
-      const updatedExperiences = [...experiences, newExperience]
-      
-      // Save to localStorage
-      localStorage.setItem('starExperiences', JSON.stringify(updatedExperiences))
-      
-      // Clear the form state
-      localStorage.removeItem('starBuilderState')
-      
-      // Reset the state to initial values
-      setState(initialState)
-      
-      toast.success("Experience saved successfully!")
-      router.push('/star')
     } catch (error) {
-      console.error('Error saving experience:', error)
-      toast.error("Failed to save experience. Please try again.")
+      console.error('Update error:', error)
+      toast.error("Failed to update experience. Please try again.")
     }
-  }, [state, router])
+  }, [state, experienceId, router, mounted])
 
   const formatDate = useCallback((month: string, year: string) => {
     if (!month || !year) return ""
@@ -1275,7 +1328,7 @@ const StarBuilder: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="situation" className="text-gray-700">Situation</Label>
                   <div className="space-y-4">
-                    <Textarea 
+                                        <Textarea 
                       id="situation" 
                       name="situation" 
                       value={state.starContent.situation} 
@@ -1388,8 +1441,8 @@ const StarBuilder: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold">Edit Your Input</h2>
-          <p className="text-gray-600">If you want to make edits to your input, click below to go back to form.</p>
+          <h2 className="text-2xl font-bold">Edit Your Experience</h2>
+          <p className="text-gray-600">Review and update your experience details below.</p>
           
           <Card className="relative hover:bg-gray-50 transition-colors cursor-pointer" onClick={handleEditInput}>
             <CardContent className="p-6">
@@ -1410,27 +1463,44 @@ const StarBuilder: React.FC = () => {
           </Card>
         </div>
 
-        {state.isGenerating ? (
-          <BulletsSkeleton />
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold">Review Generated Output</h2>
-                <p className="text-gray-600">
-                  See the STAR Bullets content below and make any edits if necessary. 
-                  Once you are happy with your information, click Save Experience to save this experience
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleCopyBullets}>
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy
-                </Button>
-              </div>
-            </div>
+        <div className="space-y-4">
+          
 
-            <TooltipProvider>
+          {state.isGenerating ? (
+            <BulletsSkeleton />
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">Review Generated Output</h2>
+                  <p className="text-gray-600">
+                    See the STAR Bullets content below and make any edits if necessary. 
+                    Once you are happy with your information, click Save Experience to save this experience
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={handleRegenerateBullets}
+                    className="flex items-center"
+                    disabled={state.isGenerating}
+                  >
+                    <RefreshCw className={`mr-2 h-4 w-4 ${state.isGenerating ? 'animate-spin' : ''}`} />
+                    {state.isGenerating ? 'Generating...' : 'Regenerate Bullets'}
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={handleCopyBullets}
+                    className="flex items-center gap-2"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copy Bullets
+                  </Button>
+                </div>
+              </div>
+
+              <TooltipProvider>
               <div className="group relative flex flex-col justify-between rounded-xl bg-white transform-gpu dark:bg-black dark:[border:1px_solid_rgba(255,255,255,.1)] dark:[box-shadow:0_-20px_80px_-20px_#ffffff1f_inset] col-span-3 lg:col-span-1">
                 <div className="flex flex-col border border-input shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary h-full min-h-56 w-full rounded-xl">
                   <MinimalTiptapEditor
@@ -1447,29 +1517,39 @@ const StarBuilder: React.FC = () => {
               </div>
             </TooltipProvider>
 
-            <div className="flex justify-between pt-4">
-              <Button 
-                variant="secondary" 
-                onClick={handleRegenerateBullets}
-                className="flex items-center"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Regenerate Bullets
-              </Button>
-              <Button 
-                  variant="outline" 
-                  onClick={handleSimulateData}
-                  className="flex items-center gap-2"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Load Test Data
-                </Button>
+              <div className="flex justify-between pt-4">
+                <div className="flex items-center gap-2">
+                  <TailorPositionDialog 
+                    onTailor={handleTailorRegenerateBullets}
+                    selectedPosition={selectedPosition}
+                    onPositionSelect={setSelectedPosition}
+                  />
+                  
+                  <Button 
+                    variant="secondary" 
+                    onClick={handleRegenerateBullets}
+                    className="flex items-center"
+                    disabled={state.isGenerating}
+                  >
+                    <RefreshCw className={`mr-2 h-4 w-4 ${state.isGenerating ? 'animate-spin' : ''}`} />
+                    {state.isGenerating ? 'Generating...' : 'Regenerate Bullets'}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsVersionSidebarOpen(true)}
+                    className="flex items-center ml-2"
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     )
-  }, [mounted, state, handleEditInput, handleCopyBullets, handleRegenerateBullets, handleAddExperience, formatDate, handleSimulateData])
+  }, [mounted, state, handleEditInput, handleCopyBullets, handleRegenerateBullets, selectedPosition, bulletVersions])
 
   const renderCurrentStep = () => {
     switch (state.currentStep) {
@@ -1622,70 +1702,152 @@ const StarBuilder: React.FC = () => {
     }
   }, [state.basicInfo, state.starContent])
 
-  const handleSaveExperience = useCallback(() => {
+  const handleSaveExperience = useCallback(async () => {
     try {
-      // Create new experience object
-      const newExperience = {
-        id: Date.now(), // Unique ID for each experience
+      // Get current experiences from localStorage
+      const savedExperiences = localStorage.getItem('starExperiences')
+      const experiences = savedExperiences ? JSON.parse(savedExperiences) : []
+      
+      // Find the index of the experience we're editing
+      const experienceIndex = experiences.findIndex((exp: any) => exp.id === experienceId)
+      
+      // Create updated experience object
+      const updatedExperience = {
+        id: experienceId, // Keep the same ID
         title: state.basicInfo.position,
         company: state.basicInfo.company,
         type: state.experienceType,
         dateRange: state.basicInfo.dateRange,
         bullets: state.generatedBullets,
-        selected: false,
-        gradient: getRandomGradient(),
-        // Store all STAR content for later editing
         starContent: state.starContent,
+        selected: false,
+        gradient: state.gradient,
         recommendations: state.recommendations
       }
 
-      // Get existing experiences and add new one
-      const savedExperiences = localStorage.getItem('starExperiences')
-      const experiences = savedExperiences ? JSON.parse(savedExperiences) : []
-      experiences.push(newExperience)
-      
-      // Save updated experiences list
+      if (experienceIndex !== -1) {
+        // Update existing experience
+        experiences[experienceIndex] = updatedExperience
+      } else {
+        console.error('Experience not found for editing')
+        toast.error('Failed to update experience')
+        return
+      }
+
+      // Save back to localStorage
       localStorage.setItem('starExperiences', JSON.stringify(experiences))
       
-      // Clear builder state
-      localStorage.removeItem('starBuilderData')
+      // Show success message
+      toast.success('Experience updated successfully')
       
       // Navigate back to star page
       router.push('/star')
-      
-      toast.success("Experience saved successfully!")
     } catch (error) {
-      console.error('Save error:', error)
-      toast.error("Failed to save experience. Please try again.")
+      console.error('Error saving experience:', error)
+      toast.error('Failed to update experience')
     }
-  }, [state, router])
+  }, [state, experienceId, router])
 
-  const updateState = (updates: Partial<StarBuilderState>) => {
-    setState(prev => {
-      const newState = {
+  const handleTailorRegenerateBullets = useCallback(async () => {
+    setState(prev => ({ ...prev, isGenerating: true }))
+    try {
+      // Use different endpoint for tailoring
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/tailor`
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentBullets: state.generatedBullets,
+          basic_info: {
+            company: state.basicInfo.company,
+            position: state.basicInfo.position,
+            industry: state.basicInfo.industries
+          },
+          targetPosition: {
+            title: selectedPosition?.title,
+            company: selectedPosition?.company,
+            industry: selectedPosition?.industry,
+            description: selectedPosition?.description,
+            instructions: selectedPosition?.instructions
+          }
+        })
+      })
+
+      console.log('Response status:', response.status)
+      const responseText = await response.text()
+      console.log('Raw response:', responseText)
+
+      if (!response.ok) {
+        throw new Error(`Failed to tailor bullets: ${response.status} ${responseText}`)
+      }
+
+      // Rest of your code...
+    } catch (error) {
+      console.error('Error tailoring bullets:', error)
+      setState(prev => ({ ...prev, isGenerating: false }))
+      toast.error("Failed to tailor bullets. Please try again.")
+    }
+  }, [state, selectedPosition])
+
+  const handleTailorPosition = async (position: Position) => {
+    setState(prev => ({ ...prev, isGenerating: true }))
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/recommendations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...state.starContent,
+          targetPosition: position.title,
+          targetCompany: position.company,
+          targetIndustry: position.industry,
+          jobDescription: position.description,
+          instruction: "Please tailor these bullets specifically for this job position and company, dont go overboard with the length or additional details but make sure to include all the important & integral details and try to make sure it will pass the ATS filter and keywords. Don't start making details up try to make sure tey are logical and make sense."
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to generate recommendations')
+      
+      const data = await response.json()
+      setState(prev => ({
         ...prev,
-        ...updates
-      };
+        generatedBullets: data.bullets,
+        isGenerating: false
+      }))
+      
+      toast.success("Bullets tailored successfully!")
+    } catch (error) {
+      console.error('Error:', error)
+      toast.error("Failed to tailor bullets. Please try again.")
+      setState(prev => ({ ...prev, isGenerating: false }))
+    }
+  }
 
-      // Get existing data from localStorage
-      const existingData = localStorage.getItem('starBuilderData');
-      const parsedData = existingData ? JSON.parse(existingData) : {};
-
-      // Update localStorage with new state
-      localStorage.setItem('starBuilderData', JSON.stringify({
-        ...parsedData,
-        ...newState
-      }));
-
-      return newState;
-    });
-  };
-
-  useEffect(() => {
-    // Clear any existing draft state when starting a new experience
-    localStorage.removeItem('starBuilderDraft')
-    setState(initialState)
-  }, [])
+  const handleRevertVersion = (version: BulletVersion) => {
+    // Clear current content
+    const editor = state.editor
+    if (editor) {
+      editor.commands.setContent('')
+      // Then set new content
+      setTimeout(() => {
+        editor.commands.setContent(version.content)
+      }, 0)
+    }
+    
+    setState(prev => ({
+      ...prev,
+      generatedBullets: version.content
+    }))
+    
+    setIsVersionSidebarOpen(false)
+    toast.success("Reverted to previous version")
+  }
 
   if (!mounted) {
     return null
@@ -1776,8 +1938,64 @@ const StarBuilder: React.FC = () => {
           </div>
         </footer>
       </div>
+
+      <Sheet open={isVersionSidebarOpen} onOpenChange={setIsVersionSidebarOpen}>
+        <SheetContent side="right" className="w-[400px]">
+          <SheetHeader>
+            <SheetTitle>Bullet Versions</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-4">
+            {bulletVersions.map((version, index) => (
+              <div key={version.timestamp} className="border rounded-lg p-4 mb-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="font-medium">Version {bulletVersions.length - index}</span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      {new Date(version.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Update editor content
+                      if (state.editor) {
+                        state.editor.commands.setContent(version.content)
+                      }
+                      // Update state
+                      setState(prev => ({
+                        ...prev,
+                        generatedBullets: version.content
+                      }))
+                      setIsVersionSidebarOpen(false)
+                      toast.success("Reverted to previous version")
+                    }}
+                  >
+                    Revert to this version
+                  </Button>
+                </div>
+                
+                <div className="mt-2">
+                  <details className="text-sm">
+                    <summary className="cursor-pointer hover:text-blue-500">
+                      Show content preview
+                    </summary>
+                    <div className="mt-2 p-2 bg-muted rounded-md">
+                      {version.content.content?.map((bullet, i) => (
+                        <div key={i} className="mb-1">
+                          {bullet.content?.[0]?.text}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
 
-export default StarBuilder
+export default EditStarBuilder

@@ -605,6 +605,119 @@ Format the response as a JSON object with an array of 3-4 bullet points:
         logging.error(f"Error in generate_bullets: {str(e)}")
         logging.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
+      
+@app.route('/api/star/tailor', methods=['POST', 'OPTIONS'])
+def tailor_bullets():
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        data = request.json
+        logging.info(f"Received data: {data}")
+        
+        # Extract all necessary data
+        basic_info = data.get('basic_info', {})
+        current_bullets = data.get('currentBullets', [])
+        target_position = data.get('targetPosition', {})
+        
+        # Handle industry data
+        industry = basic_info.get('industry', [])
+        industry_str = ', '.join(industry) if isinstance(industry, list) else str(industry)
+
+        system_prompt = """You are an expert ATS optimization specialist and professional resume writer. Your task is to tailor existing resume bullets for a specific job position while:
+
+1. Maintaining the core achievements and experiences
+2. Incorporating relevant keywords from the job description
+3. Aligning the language with the target role and company
+4. Ensuring bullets pass ATS screening
+5. Following any specific tailoring instructions provided
+
+Guidelines:
+- Keep bullets concise but impactful (max 2 lines each)
+- Include measurable results where present
+- Use industry-specific terminology from the target role
+- Maintain professional resume formatting
+- Focus on transferable skills when changing industries
+- Prioritize keywords from the job description without keyword stuffing"""
+
+        input_prompt = f"""Tailor these resume bullets for the following target position. Review and enhance the provided resume content, transforming it into a efficient, strong, concise, but very impactful resume bullets. If the content is basic, improve it with context, measurable results, and clarity. If it is already improved, refine it for conciseness and impact. Do not over-improve it. Focus on efficiency and impact but CLEAR STORYTELLING. Keep the response formatted as resume-style bullet points, no sub-bullets but still impactful and telling of the full story.:
+
+TARGET POSITION DETAILS:
+Title: {target_position.get('title', '')}
+Company: {target_position.get('company', '')}
+Industry: {target_position.get('industry', '')}
+Job Description: {target_position.get('description', '')}
+
+SPECIAL INSTRUCTIONS:
+{target_position.get('instructions', 'No special instructions provided')}
+
+CURRENT POSITION:
+Company: {basic_info.get('company', '')}
+Position: {basic_info.get('position', '')}
+Industry: {industry_str}
+
+CURRENT BULLETS:
+{current_bullets}
+
+Please tailor these bullets to:
+1. Match the target position's requirements
+2. Include key terms from the job description
+3. Highlight transferable skills
+4. Maintain the core achievements
+5. Follow any special instructions provided
+
+Format the response as a JSON object with an array of bullets:
+{{{{
+    "bullets": [
+        "- Tailored bullet 1",
+        "- Tailored bullet 2",
+        "- Tailored bullet 3",
+        "- Tailored bullet 4"
+    ]
+}}}}"""
+
+        logging.info(f"Tailoring prompt: {input_prompt}")
+
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+        
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": input_prompt
+                }
+            ],
+            model="llama3-8b-8192",
+            temperature=0.5,  # Lower temperature for more focused output
+            max_tokens=2000,
+            top_p=0.7,
+            stream=True
+        )
+
+        generated_response = ''
+        for chunk in chat_completion:
+            if chunk.choices[0].delta.content is not None:
+                generated_response += chunk.choices[0].delta.content
+
+        logging.info(f"Generated tailored bullets: {generated_response}")
+        
+        try:
+            parsed_data = parse_bullets_response(generated_response)
+            return jsonify(parsed_data)
+        except ValueError as e:
+            logging.error(f"Parsing error: {str(e)}")
+            return jsonify({
+                "error": "Failed to parse tailored bullets",
+                "raw_response": generated_response
+            }), 500
+
+    except Exception as e:
+        logging.error(f"Error in tailor_bullets: {str(e)}")
+        logging.error(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/ping', methods=['GET', 'OPTIONS'])
 def ping():

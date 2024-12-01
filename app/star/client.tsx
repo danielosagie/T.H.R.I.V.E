@@ -4,6 +4,10 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { StarMainPage } from "@/components/star-main-page"
 import { Experience } from '@/types/types'
+import { Button } from "@/components/ui/button"
+import { Pencil } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 
 export default function StarClient() {
   const router = useRouter()
@@ -11,41 +15,30 @@ export default function StarClient() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const loadExperiences = () => {
+    // Load all saved STAR experiences from localStorage
+    const savedExperiences = localStorage.getItem('starExperiences')
+    const savedBuilderState = localStorage.getItem('starBuilderState')
+    
+    if (savedExperiences) {
       try {
-        const savedData = localStorage.getItem('starBuilderState')
-        console.log('Raw saved data:', savedData)
+        const parsedExperiences = JSON.parse(savedExperiences)
+        // Sort experiences by id (creation date), most recent first
+        const sortedExperiences = parsedExperiences.sort((a: Experience, b: Experience) => {
+          return b.id - a.id // Sort by ID (timestamp) in descending order
+        })
         
-        if (savedData) {
-          const parsed = JSON.parse(savedData)
-          const experience = {
-            id: Date.now(),
-            title: parsed.basicInfo.position,
-            company: parsed.basicInfo.company,
-            type: parsed.experienceType || 'work',
-            dateRange: parsed.basicInfo.dateRange,
-            bullets: parsed.generatedBullets || [],
-            starContent: parsed.starContent || {
-              situation: '',
-              task: '',
-              actions: '',
-              results: ''
-            },
-            selected: false,
-            gradient: `linear-gradient(135deg, ${getRandomColor()} 0%, ${getRandomColor()} 100%)`
-          }
-          
-          setExperiences([experience])
-        }
+        setExperiences(sortedExperiences)
       } catch (error) {
-        console.error('Error loading experiences:', error)
-        setExperiences([])
-      } finally {
-        setIsLoading(false)
+        console.error('Error parsing saved experiences:', error)
       }
     }
 
-    loadExperiences()
+    // Clear the builder state after loading experiences
+    if (savedBuilderState) {
+      localStorage.removeItem('starBuilderState')
+    }
+    
+    setIsLoading(false)
   }, [])
 
   const getRandomColor = () => {
@@ -57,11 +50,14 @@ export default function StarClient() {
   }
 
   const handleAddNew = () => {
-    router.push('/star/builder')
+    // Clear any existing builder state
+    localStorage.removeItem('starBuilderData')
+    router.push('/starinput')
   }
 
-  const handleEditExperience = (id: number) => {
-    router.push(`/star/builder/${id}`)
+  const handleEditExperience = (experienceId: number) => {
+    console.log('Editing experience:', experienceId) // Debug log
+    router.push(`/star/edit/${experienceId}`)
   }
 
   const handleExportSelected = (selectedIds: number[]) => {

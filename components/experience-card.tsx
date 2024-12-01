@@ -87,7 +87,7 @@ export function ExperienceCard({ initialData, persona, format, mode, onEdit }: E
           ) : (
             <div className="flex flex-wrap gap-1 sm:gap-2">
               {formatContent(content).map((item, index) => (
-                <span key={index} className="tag">
+                <span key={index} className="tag inline-block leading-relaxed mb-2 mr-2">
                   {item}
                 </span>
               ))}

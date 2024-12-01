@@ -1,6 +1,4 @@
-"use client"
-
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 import { Check, ChevronsUpDown, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-const defaultIndustries = [
+const industriesByCategory = [
   {
     category: "Technology & Digital",
     industries: [
@@ -112,21 +110,30 @@ const defaultIndustries = [
 ];
 
 interface IndustrySelectProps {
-  value: string
-  onChange: (value: string) => void
-  className?: string
+  value: string[]
+  onChange: (value: string[]) => void
+  industriesByCategory: Array<{
+    category: string
+    industries: string[]
+  }>
 }
 
 export function IndustrySelect({ 
-  value = "",
-  onChange,
-  className 
+  value = [],
+  onChange, 
+  industriesByCategory 
 }: IndustrySelectProps) {
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [customIndustry, setCustomIndustry] = useState("")
 
-  const filteredCategories = defaultIndustries.map(category => ({
+  const toggleIndustry = (industry: string) => {
+    const newValue = value.includes(industry)
+      ? value.filter(i => i !== industry)
+      : [...value, industry]
+    onChange(newValue)
+  }
+
+  const filteredCategories = industriesByCategory.map(category => ({
     ...category,
     industries: category.industries.filter(industry =>
       industry.toLowerCase().includes(searchQuery.toLowerCase())
@@ -140,9 +147,11 @@ export function IndustrySelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={`w-full justify-between ${className}`}
+          className="w-full justify-between"
         >
-          {value || "Select industry..."}
+          {value.length === 0
+            ? "Select industries..." 
+            : `${value.length} ${value.length === 1 ? 'industry' : 'industries'} selected`}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -155,34 +164,13 @@ export function IndustrySelect({
         <div className="flex items-center border-b mb-2 pb-2">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           <Input
-            placeholder="Search or enter custom industry..."
+            placeholder="Search industries..."
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
-              setCustomIndustry(e.target.value)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && customIndustry) {
-                onChange(customIndustry)
-                setOpen(false)
-              }
-            }}
-            className="border-0 focus-visible:ring-0"
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
           />
         </div>
         <div className="max-h-[300px] overflow-y-auto">
-          {customIndustry && (
-            <Button
-              variant="ghost"
-              className="w-full text-left"
-              onClick={() => {
-                onChange(customIndustry)
-                setOpen(false)
-              }}
-            >
-              Add custom: {customIndustry}
-            </Button>
-          )}
           {filteredCategories.length === 0 ? (
             <div className="py-6 text-center text-sm">No industries found.</div>
           ) : (
@@ -195,14 +183,11 @@ export function IndustrySelect({
                   {category.industries.map((industry) => (
                     <button
                       key={industry}
-                      onClick={() => {
-                        onChange(industry)
-                        setOpen(false)
-                      }}
+                      onClick={() => toggleIndustry(industry)}
                       className="flex items-center w-full hover:bg-accent hover:text-accent-foreground rounded-sm px-2 py-1.5 text-sm"
                     >
                       <div className="mr-2 h-4 w-4 shrink-0">
-                        {value === industry && <Check className="h-4 w-4" />}
+                        {value.includes(industry) && <Check className="h-4 w-4" />}
                       </div>
                       <span>{industry}</span>
                     </button>

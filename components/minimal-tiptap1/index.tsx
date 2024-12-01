@@ -3,7 +3,6 @@
 import { useEditor, EditorContent, Content, Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
-import { lowlight } from 'lowlight'
 import { common, createLowlight } from 'lowlight'
 import Color from '@tiptap/extension-color'
 import Heading from '@tiptap/extension-heading'
@@ -16,8 +15,8 @@ import Typography from '@tiptap/extension-typography'
 import Underline from '@tiptap/extension-underline'
 import { Toolbar } from './toolbar'
 
-// Initialize lowlight with common languages
-const low = createLowlight(common)
+// Create a new lowlight instance
+const lowlight = createLowlight(common)
 
 interface MinimalTiptapEditorProps {
   value: Content
@@ -50,7 +49,7 @@ export function MinimalTiptapEditor({
         codeBlock: false, // Disable the default code block
       }),
       CodeBlockLowlight.configure({
-        lowlight: low,
+        lowlight: lowlight,
       }),
       Color,
       Heading,

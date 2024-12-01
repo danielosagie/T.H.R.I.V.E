@@ -6,6 +6,7 @@ import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "./api/uploadthing/core";
 import { TooltipProvider } from '@/components/ui/tooltip'
+import StyledComponentsRegistry from '@/lib/registry'
 
 export const metadata: Metadata = {
   title: 'THRIVE Toolkit',
@@ -24,16 +25,18 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
       </head>
-      <body className="min-w-[320px]">
-        <ServerPing />
-        <MyContextProvider>
+      <body className="min-w-[320px]" suppressHydrationWarning>
+        <StyledComponentsRegistry>
+          <ServerPing />
+          <MyContextProvider>
           <NextSSRPlugin 
             routerConfig={extractRouterConfig(ourFileRouter)}
           />
           <TooltipProvider>
             {children}
-          </TooltipProvider>
-        </MyContextProvider>
+            </TooltipProvider>
+          </MyContextProvider>
+        </StyledComponentsRegistry>
       </body>
     </html>
   )

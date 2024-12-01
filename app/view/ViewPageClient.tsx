@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { PersonaSelector } from '@/components/persona-selector'
 import { ControlBar } from '@/components/control-bar'
 import { saveExperienceData } from '@/lib/data'
+import { motion } from 'framer-motion'
 
 export default function ViewPageClient() {
   const [personas, setPersonas] = useState<PersonaData[]>([])
@@ -20,34 +21,46 @@ export default function ViewPageClient() {
   const [mode, setMode] = useState<'view' | 'edit'>('view')
   const [format, setFormat] = useState<'bullet' | 'card'>('bullet')
   const [lastAutoSave, setLastAutoSave] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(true)
 
   const router = useRouter()
   const searchParams = useSearchParams()
   const newCardId = searchParams.get('newCardId')
 
   useEffect(() => {
-    const storedPersonas = localStorage.getItem('personas')
-    if (storedPersonas) {
-      const parsedPersonas = JSON.parse(storedPersonas)
-      setPersonas(parsedPersonas)
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const storedPersonas = localStorage.getItem('personas')
+        if (storedPersonas) {
+          const parsedPersonas = JSON.parse(storedPersonas)
+          setPersonas(parsedPersonas)
 
-      const lastSelectedId = localStorage.getItem('lastSelectedPersonaId')
-      if (newCardId) {
-        const newCard = parsedPersonas.find((p: PersonaData) => p.id === newCardId)
-        if (newCard) {
-          setSelectedPersona(newCard)
-          localStorage.setItem('lastSelectedPersonaId', newCard.id)
+          const lastSelectedId = localStorage.getItem('lastSelectedPersonaId')
+          if (newCardId) {
+            const newCard = parsedPersonas.find((p: PersonaData) => p.id === newCardId)
+            if (newCard) {
+              setSelectedPersona(newCard)
+              localStorage.setItem('lastSelectedPersonaId', newCard.id)
+            }
+          } else if (lastSelectedId) {
+            const lastSelected = parsedPersonas.find((p: PersonaData) => p.id === lastSelectedId)
+            if (lastSelected) {
+              setSelectedPersona(lastSelected)
+            }
+          } else if (parsedPersonas.length > 0) {
+            setSelectedPersona(parsedPersonas[0])
+            localStorage.setItem('lastSelectedPersonaId', parsedPersonas[0].id)
+          }
         }
-      } else if (lastSelectedId) {
-        const lastSelected = parsedPersonas.find((p: PersonaData) => p.id === lastSelectedId)
-        if (lastSelected) {
-          setSelectedPersona(lastSelected)
-        }
-      } else if (parsedPersonas.length > 0) {
-        setSelectedPersona(parsedPersonas[0])
-        localStorage.setItem('lastSelectedPersonaId', parsedPersonas[0].id)
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
+    
+    loadData()
   }, [newCardId])
 
   const handlePersonaSelect = (personaId: string) => {
@@ -90,7 +103,23 @@ export default function ViewPageClient() {
     return () => clearInterval(interval)
   }, [])
 
+  const ViewSkeleton = () => (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+      <div className="space-y-4">
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      </div>
+    </div>
+  )
+
   const renderContent = () => {
+    if (isLoading) {
+      return <ViewSkeleton />
+    }
+
     if (personas.length === 0) {
       return (
         <div className="text-center">
@@ -103,13 +132,19 @@ export default function ViewPageClient() {
     }
 
     return (
-      <ExperienceCard
-        initialData={selectedPersona}
-        persona={selectedPersona}
-        format={format}
-        mode={mode}
-        onEdit={updateAutoSaveTimestamp}
-      />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <ExperienceCard
+          initialData={selectedPersona}
+          persona={selectedPersona}
+          format={format}
+          mode={mode}
+          onEdit={updateAutoSaveTimestamp}
+        />
+      </motion.div>
     )
   }
 
