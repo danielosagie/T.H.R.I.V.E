@@ -1,6 +1,6 @@
 "use client"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -29,34 +29,48 @@ export function TailorPositionDialog({ onTailor, selectedPosition, onPositionSel
   const [open, setOpen] = useState(false)
   const [positions, setPositions] = useState<Position[]>([])
   const [editingPosition, setEditingPosition] = useState<Position | null>(null)
-
-  useEffect(() => {
-    if (selectedPosition) {
-      setEditingPosition(selectedPosition)
-      setOpen(true)
-    }
-  }, [selectedPosition])
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     const savedPositions = localStorage.getItem('tailoredPositions')
     if (savedPositions) {
-      const parsed = JSON.parse(savedPositions)
-      setPositions(parsed)
+      try {
+        const parsed = JSON.parse(savedPositions)
+        const uniquePositions = Array.from(new Map(
+          parsed.map((p: Position) => [p.createdAt, p])
+        ).values())
+        setPositions(uniquePositions)
+      } catch (error) {
+        console.error('Error loading positions:', error)
+      }
     }
   }, [])
 
-  const handleSavePosition = () => {
-    if (!editingPosition) return
+  const handleSavePosition = async () => {
+    if (!editingPosition || isSaving) return
+    setIsSaving(true)
     
-    const updatedPositions = positions.some(p => p.createdAt === editingPosition.createdAt)
-      ? positions.map(p => p.createdAt === editingPosition.createdAt ? editingPosition : p)
-      : [...positions, { ...editingPosition, createdAt: Date.now() }]
-    
-    setPositions(updatedPositions)
-    localStorage.setItem('tailoredPositions', JSON.stringify(updatedPositions))
-    onPositionSelect(editingPosition)
-    toast.success("Position saved successfully!")
-    setOpen(false)
+    try {
+      const timestamp = editingPosition.createdAt || Date.now()
+      const positionToSave = {
+        ...editingPosition,
+        createdAt: timestamp
+      }
+
+      const updatedPositions = positions.filter(p => p.createdAt !== timestamp)
+      updatedPositions.push(positionToSave)
+
+      setPositions(updatedPositions)
+      localStorage.setItem('tailoredPositions', JSON.stringify(updatedPositions))
+      onPositionSelect(positionToSave)
+      toast.success('Position saved successfully!')
+      setOpen(false)
+    } catch (error) {
+      console.error('Error saving position:', error)
+      toast.error('Failed to save position')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -91,19 +105,24 @@ export function TailorPositionDialog({ onTailor, selectedPosition, onPositionSel
       <Dialog 
         open={open} 
         onOpenChange={(newOpen) => {
-          setOpen(newOpen)
-          if (!newOpen) {
-            setEditingPosition(null)
+          if (!isSaving) {
+            setOpen(newOpen)
+            if (!newOpen) {
+              setEditingPosition(null)
+            }
           }
         }}
       >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Set Position to Tailor</DialogTitle>
+            <DialogTitle>Select Position to Tailor</DialogTitle>
+            <DialogDescription>
+              Choose a position to tailor your bullets to match the job requirements.
+            </DialogDescription>
           </DialogHeader>
           
           <Select
-            value={selectedPosition?.title || "none"}
+            value={editingPosition?.createdAt?.toString() || "none"}
             onValueChange={(value) => {
               if (value === "new") {
                 setEditingPosition({
@@ -117,12 +136,10 @@ export function TailorPositionDialog({ onTailor, selectedPosition, onPositionSel
               } else if (value === "none") {
                 onPositionSelect(null)
                 setEditingPosition(null)
-                toast.success("Position selection cleared")
               } else {
-                const position = positions.find(p => p.title === value)
+                const position = positions.find(p => p.createdAt.toString() === value)
                 if (position) {
                   setEditingPosition({ ...position })
-                  onPositionSelect(position)
                 }
               }
             }}
@@ -134,7 +151,7 @@ export function TailorPositionDialog({ onTailor, selectedPosition, onPositionSel
               <SelectItem value="none">No Position Selected</SelectItem>
               <SelectItem value="new">Create New Position</SelectItem>
               {positions.map((position) => (
-                <SelectItem key={position.title} value={position.title}>
+                <SelectItem key={position.createdAt} value={position.createdAt.toString()}>
                   {position.company} - {position.title}
                 </SelectItem>
               ))}

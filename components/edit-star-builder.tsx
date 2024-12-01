@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -491,6 +491,7 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
     return []
   })
   const [isVersionSidebarOpen, setIsVersionSidebarOpen] = useState(false)
+  const editorRef = useRef<EditorRef>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -1504,6 +1505,7 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
               <div className="group relative flex flex-col justify-between rounded-xl bg-white transform-gpu dark:bg-black dark:[border:1px_solid_rgba(255,255,255,.1)] dark:[box-shadow:0_-20px_80px_-20px_#ffffff1f_inset] col-span-3 lg:col-span-1">
                 <div className="flex flex-col border border-input shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary h-full min-h-56 w-full rounded-xl">
                   <MinimalTiptapEditor
+                    ref={editorRef}
                     value={state.generatedBullets}
                     onChange={(newContent) => {
                       setState(prev => ({ 
@@ -1751,83 +1753,69 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
   const handleTailorRegenerateBullets = useCallback(async () => {
     setState(prev => ({ ...prev, isGenerating: true }))
     try {
-      // Use different endpoint for tailoring
       const apiUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/tailor`
-      
       const response = await fetch(apiUrl, {
         method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          currentBullets: state.generatedBullets,
           basic_info: {
             company: state.basicInfo.company,
             position: state.basicInfo.position,
             industry: state.basicInfo.industries
           },
-          targetPosition: {
-            title: selectedPosition?.title,
-            company: selectedPosition?.company,
-            industry: selectedPosition?.industry,
-            description: selectedPosition?.description,
-            instructions: selectedPosition?.instructions
-          }
+          star_content: {
+            situation: state.starContent.situation,
+            task: state.starContent.task,
+            action: state.starContent.action,
+            result: state.starContent.result
+          },
+          targetPosition: selectedPosition
         })
       })
 
-      console.log('Response status:', response.status)
-      const responseText = await response.text()
-      console.log('Raw response:', responseText)
-
       if (!response.ok) {
-        throw new Error(`Failed to tailor bullets: ${response.status} ${responseText}`)
+        const errorData = await response.json()
+        throw new Error(`Failed to tailor bullets: ${response.status} ${JSON.stringify(errorData)}`)
       }
 
-      // Rest of your code...
+      const data = await response.json()
+      
+      // Extract bullets from response
+      const bullets = data.bullets || (data.raw_response ? JSON.parse(data.raw_response).bullets : [])
+      
+      // Ensure each bullet starts with "- "
+      const formattedBullets = bullets.map((bullet: string) => 
+        bullet.startsWith('- ') ? bullet : `- ${bullet}`
+      )
+
+      // Convert to Tiptap format
+      const bulletContent = formattedBullets.map(bullet => ({
+        type: 'paragraph',
+        content: [{ type: 'text', text: bullet }]
+      }))
+
+      // Update editor content using ref
+      if (editorRef.current?.editor) {
+        editorRef.current.editor.commands.setContent(bulletContent)
+      }
+
+      // Create new version
+      const newVersion = {
+        id: Date.now(),
+        content: bulletContent,
+        timestamp: new Date().toISOString(),
+        type: 'tailored'
+      }
+
+      setBulletVersions(prev => [newVersion, ...prev])
+      setState(prev => ({ ...prev, isGenerating: false }))
+      toast.success("Bullets tailored successfully!")
     } catch (error) {
       console.error('Error tailoring bullets:', error)
       setState(prev => ({ ...prev, isGenerating: false }))
       toast.error("Failed to tailor bullets. Please try again.")
     }
   }, [state, selectedPosition])
-
-  const handleTailorPosition = async (position: Position) => {
-    setState(prev => ({ ...prev, isGenerating: true }))
-    
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/star/recommendations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...state.starContent,
-          targetPosition: position.title,
-          targetCompany: position.company,
-          targetIndustry: position.industry,
-          jobDescription: position.description,
-          instruction: "Please tailor these bullets specifically for this job position and company, dont go overboard with the length or additional details but make sure to include all the important & integral details and try to make sure it will pass the ATS filter and keywords. Don't start making details up try to make sure tey are logical and make sense."
-        })
-      })
-
-      if (!response.ok) throw new Error('Failed to generate recommendations')
-      
-      const data = await response.json()
-      setState(prev => ({
-        ...prev,
-        generatedBullets: data.bullets,
-        isGenerating: false
-      }))
-      
-      toast.success("Bullets tailored successfully!")
-    } catch (error) {
-      console.error('Error:', error)
-      toast.error("Failed to tailor bullets. Please try again.")
-      setState(prev => ({ ...prev, isGenerating: false }))
-    }
-  }
 
   const handleRevertVersion = (version: BulletVersion) => {
     // Clear current content
@@ -1940,11 +1928,11 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
       </div>
 
       <Sheet open={isVersionSidebarOpen} onOpenChange={setIsVersionSidebarOpen}>
-        <SheetContent side="right" className="w-[400px]">
+        <SheetContent className="w-[400px]">
           <SheetHeader>
-            <SheetTitle>Bullet Versions</SheetTitle>
+            <SheetTitle>Version History</SheetTitle>
           </SheetHeader>
-          <div className="mt-4 space-y-4">
+          <div className="h-[calc(100vh-120px)] overflow-y-auto pr-4 mt-4">
             {bulletVersions.map((version, index) => (
               <div key={version.timestamp} className="border rounded-lg p-4 mb-4">
                 <div className="flex justify-between items-center">

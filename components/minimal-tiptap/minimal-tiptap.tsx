@@ -14,6 +14,8 @@ import { SectionFive } from './components/section/five'
 import { LinkBubbleMenu } from './components/bubble-menu/link-bubble-menu'
 import { useMinimalTiptapEditor } from './hooks/use-minimal-tiptap'
 import { MeasuredContainer } from './components/measured-container'
+import StarterKit from '@tiptap/starter-kit'
+import Underline from '@tiptap/extension-underline'
 
 export interface MinimalTiptapProps extends Omit<UseMinimalTiptapEditorProps, 'onUpdate'> {
   value?: Content
@@ -40,13 +42,37 @@ const Toolbar = ({ editor }: { editor: Editor }) => (
   </div>
 )
 
-export const MinimalTiptapEditor = React.forwardRef<HTMLDivElement, MinimalTiptapProps>(
+export interface EditorRef {
+  editor: Editor | null
+}
+
+export const MinimalTiptapEditor = React.forwardRef<EditorRef, MinimalTiptapProps>(
   ({ value, onChange, className, editorContentClassName, ...props }, ref) => {
     const editor = useMinimalTiptapEditor({
       value,
       onUpdate: onChange,
-      ...props
+      editorProps: {
+        attributes: {
+          class: cn('prose max-w-none', className),
+        },
+      },
+      extensions: [
+        StarterKit.configure({
+          paragraph: {
+            HTMLAttributes: {
+              class: 'mb-1',
+            },
+          },
+        }),
+        Underline,
+      ],
+      immediatelyRender: false
     })
+
+    // Expose editor instance through ref
+    React.useImperativeHandle(ref, () => ({
+      editor: editor
+    }))
 
     if (!editor) {
       return null

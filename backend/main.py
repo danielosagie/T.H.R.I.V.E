@@ -637,7 +637,7 @@ Guidelines:
 - Use industry-specific terminology from the target role
 - Maintain professional resume formatting
 - Focus on transferable skills when changing industries
-- Prioritize keywords from the job description without keyword stuffing"""
+- Prioritize keywords from the job description without keyword stuffing. If I provide special instructions, follow them and put them in the brackets do not say anything extra after just acheive the task in front of you."""
 
         input_prompt = f"""Tailor these resume bullets for the following target position. Review and enhance the provided resume content, transforming it into a efficient, strong, concise, but very impactful resume bullets. If the content is basic, improve it with context, measurable results, and clarity. If it is already improved, refine it for conciseness and impact. Do not over-improve it. Focus on efficiency and impact but CLEAR STORYTELLING. Keep the response formatted as resume-style bullet points, no sub-bullets but still impactful and telling of the full story.:
 
@@ -665,7 +665,7 @@ Please tailor these bullets to:
 4. Maintain the core achievements
 5. Follow any special instructions provided
 
-Format the response as a JSON object with an array of bullets:
+Format the response as a JSON object with an array of bullets without any extra text or notes:
 {{{{
     "bullets": [
         "- Tailored bullet 1",
