@@ -9,4 +9,16 @@ interface Experience {
   gradient: string
   starContent: StarContent
   recommendations: Recommendations
+}
+
+interface BulletVersion {
+  id: number
+  content: any
+  timestamp: string
+  type: VersionType
+  metadata: {
+    type: string
+    label: string
+    color: string
+  }
 } 

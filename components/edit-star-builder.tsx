@@ -40,6 +40,7 @@ import { toast } from 'sonner'
 import { Toaster } from 'sonner'
 import { TailorPositionDialog } from "./tailor-position-dialog"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { cn } from "@/lib/utils"
 
 interface Industry {
   category: string;
@@ -422,6 +423,27 @@ interface EditStarBuilderProps {
   experienceId: number
 }
 
+// Define version types and their properties
+const VERSION_TYPES = {
+  GENERATE: {
+    type: 'generate',
+    label: 'Generated',
+    color: 'bg-blue-100 text-blue-800'
+  },
+  REGENERATE: {
+    type: 'regenerate',
+    label: 'Regenerated',
+    color: 'bg-purple-100 text-purple-800'
+  },
+  TAILOR: {
+    type: 'tailor',
+    label: 'Tailored',
+    color: 'bg-green-100 text-green-800'
+  }
+} as const
+
+type VersionType = keyof typeof VERSION_TYPES
+
 const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
@@ -751,6 +773,11 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
         generatedBullets: formattedContent,
         isGenerating: false
       }))
+
+      // Save version with type
+      saveBulletVersion(formattedContent, 'GENERATE')
+      
+      toast.success("Bullets generated successfully!")
     } catch (error) {
       console.error('Error generating bullets:', error)
       setState(prev => ({
@@ -851,15 +878,10 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
         isGenerating: false
       }))
 
-      // Add version tracking
-      const newVersion = {
-        content: state.generatedBullets,
-        timestamp: Date.now(),
-        type: 'regenerate'
-      }
-      const updatedVersions = [...bulletVersions, newVersion]
-      setBulletVersions(updatedVersions)
-      localStorage.setItem(`bulletVersions_${experienceId}`, JSON.stringify(updatedVersions))
+      // Save version with type
+      saveBulletVersion(formattedBullets, 'REGENERATE')
+      
+      toast.success("Bullets regenerated successfully!")
     } catch (error) {
       console.error('Error regenerating bullets:', error)
       setState(prev => ({
@@ -1527,15 +1549,6 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
                     onPositionSelect={setSelectedPosition}
                   />
                   
-                  <Button 
-                    variant="secondary" 
-                    onClick={handleRegenerateBullets}
-                    className="flex items-center"
-                    disabled={state.isGenerating}
-                  >
-                    <RefreshCw className={`mr-2 h-4 w-4 ${state.isGenerating ? 'animate-spin' : ''}`} />
-                    {state.isGenerating ? 'Generating...' : 'Regenerate Bullets'}
-                  </Button>
 
                   <Button
                     variant="outline"
@@ -1773,68 +1786,99 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
         })
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(`Failed to tailor bullets: ${response.status} ${JSON.stringify(errorData)}`)
-      }
-
       const data = await response.json()
       
-      // Extract bullets from response
-      const bullets = data.bullets || (data.raw_response ? JSON.parse(data.raw_response).bullets : [])
-      
-      // Ensure each bullet starts with "- "
-      const formattedBullets = bullets.map((bullet: string) => 
-        bullet.startsWith('- ') ? bullet : `- ${bullet}`
-      )
+      if (!response.ok) {
+        throw new Error(`Failed to tailor bullets: ${response.status} ${JSON.stringify(data)}`)
+      }
 
-      // Convert to Tiptap format
-      const bulletContent = formattedBullets.map(bullet => ({
-        type: 'paragraph',
-        content: [{ type: 'text', text: bullet }]
+      // Parse the response, handling both direct and raw response formats
+      let bullets: string[] = []
+      if (data.bullets) {
+        bullets = data.bullets
+      } else if (data.raw_response) {
+        try {
+          // Clean up the raw response
+          const cleanJson = data.raw_response
+            .replace(/\n/g, '')
+            .replace(']-}', ']}')
+          const parsed = JSON.parse(cleanJson)
+          bullets = parsed.bullets
+        } catch (e) {
+          console.error('Error parsing raw response:', e)
+          throw new Error('Invalid response format from server')
+        }
+      }
+
+      // Create TipTap formatted content
+      const formattedContent = createTipTapContent(bullets)
+
+      // Update state
+      setState(prev => ({
+        ...prev,
+        generatedBullets: formattedContent,
+        isGenerating: false
       }))
 
-      // Update editor content using ref
-      if (editorRef.current?.editor) {
-        editorRef.current.editor.commands.setContent(bulletContent)
-      }
-
-      // Create new version
-      const newVersion = {
-        id: Date.now(),
-        content: bulletContent,
-        timestamp: new Date().toISOString(),
-        type: 'tailored'
-      }
-
-      setBulletVersions(prev => [newVersion, ...prev])
-      setState(prev => ({ ...prev, isGenerating: false }))
+      // Save version with type
+      saveBulletVersion(formattedContent, 'TAILOR')
+      
       toast.success("Bullets tailored successfully!")
     } catch (error) {
       console.error('Error tailoring bullets:', error)
       setState(prev => ({ ...prev, isGenerating: false }))
-      toast.error("Failed to tailor bullets. Please try again.")
+      toast.error(error.message || "Failed to tailor bullets. Please try again.")
     }
   }, [state, selectedPosition])
 
-  const handleRevertVersion = (version: BulletVersion) => {
-    // Clear current content
-    const editor = state.editor
-    if (editor) {
-      editor.commands.setContent('')
-      // Then set new content
-      setTimeout(() => {
-        editor.commands.setContent(version.content)
-      }, 0)
-    }
-    
-    setState(prev => ({
-      ...prev,
-      generatedBullets: version.content
+  // Helper function to create TipTap content
+  const createTipTapContent = (bullets: string[]) => ({
+    type: 'doc',
+    content: bullets.map(bullet => ({
+      type: 'paragraph',
+      content: [{
+        type: 'text',
+        text: bullet.trim()
+          .replace(/^["']|["']$/g, '')
+          .replace(/^-\s*/, '• ')
+      }]
     }))
-    
-    setIsVersionSidebarOpen(false)
-    toast.success("Reverted to previous version")
+  })
+
+  // Helper function to save bullet versions
+  const saveBulletVersion = (content: any, type: VersionType) => {
+    const newVersion = {
+      id: Date.now(),
+      content,
+      timestamp: new Date().toISOString(),
+      type,
+      metadata: VERSION_TYPES[type]
+    }
+    setBulletVersions(prev => [newVersion, ...prev])
+  }
+
+  // Helper function to handle version revert
+  const handleRevertVersion = (version: BulletVersion) => {
+    try {
+      const formattedContent = version.content
+      
+      // Update editor content
+      if (editorRef.current?.editor) {
+        editorRef.current.editor.commands.setContent(formattedContent)
+      }
+      
+      // Update state
+      setState(prev => ({
+        ...prev,
+        generatedBullets: formattedContent
+      }))
+      
+      setIsVersionSidebarOpen(false)
+      toast.success("Reverted to previous version")
+    } catch (error) {
+      console.error('Error reverting version:', error)
+      toast.error("Failed to revert version. Please try again.")
+    }
   }
 
   if (!mounted) {
@@ -1934,30 +1978,26 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
           </SheetHeader>
           <div className="h-[calc(100vh-120px)] overflow-y-auto pr-4 mt-4">
             {bulletVersions.map((version, index) => (
-              <div key={version.timestamp} className="border rounded-lg p-4 mb-4">
+              <div key={version.id} className="border rounded-lg p-4 mb-4">
                 <div className="flex justify-between items-center">
-                  <div>
+                  <div className="flex items-center gap-2">
                     <span className="font-medium">Version {bulletVersions.length - index}</span>
-                    <span className="text-sm text-muted-foreground ml-2">
+                    <span 
+                      className={cn(
+                        "px-2 py-1 rounded-full text-xs font-medium",
+                        version.metadata?.color
+                      )}
+                    >
+                      {version.metadata?.label}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
                       {new Date(version.timestamp).toLocaleString()}
                     </span>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      // Update editor content
-                      if (state.editor) {
-                        state.editor.commands.setContent(version.content)
-                      }
-                      // Update state
-                      setState(prev => ({
-                        ...prev,
-                        generatedBullets: version.content
-                      }))
-                      setIsVersionSidebarOpen(false)
-                      toast.success("Reverted to previous version")
-                    }}
+                    onClick={() => handleRevertVersion(version)}
                   >
                     Revert to this version
                   </Button>
@@ -1969,7 +2009,7 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
                       Show content preview
                     </summary>
                     <div className="mt-2 p-2 bg-muted rounded-md">
-                      {version.content.content?.map((bullet, i) => (
+                      {version.content.content?.map((bullet: any, i: number) => (
                         <div key={i} className="mb-1">
                           {bullet.content?.[0]?.text}
                         </div>

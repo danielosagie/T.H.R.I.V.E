@@ -624,7 +624,7 @@ def tailor_bullets():
         industry_str = ', '.join(industry) if isinstance(industry, list) else str(industry)
 
         system_prompt = """You are an expert ATS optimization specialist and professional resume writer. Your task is to tailor existing resume bullets for a specific job position while:
-
+Please keep the bullets related to the original job, but also incorporate elements that would appeal to the position we desire. Avoid making it too obvious that we are tailoring the content for that job by not explicitly stating the specific position we are applying for or removing every detail from the original role. The adjustments should be subtle, with a moderate level of tailoring for that role.
 1. Maintaining the core achievements and experiences
 2. Incorporating relevant keywords from the job description
 3. Aligning the language with the target role and company
@@ -662,7 +662,7 @@ Please tailor these bullets to:
 1. Match the target position's requirements
 2. Include key terms from the job description
 3. Highlight transferable skills
-4. Maintain the core achievements
+4. Maintain the core achievements. Please keep the bullets related to the original job, but also incorporate elements that would appeal to the position we desire. Avoid making it too obvious that we are tailoring the content for that job by not explicitly stating the specific position we are applying for or removing every detail from the original role. The adjustments should be subtle, with a moderate level of tailoring.
 5. Follow any special instructions provided
 
 Format the response as a JSON object with an array of bullets without any extra text or notes:
@@ -735,19 +735,29 @@ def ping():
 def parse_bullets_response(response_text: str) -> dict:
     """Parse the LLM response for bullet points."""
     try:
-        # First try to parse as JSON directly
-        json_data = extract_json(response_text)
-        if json_data and "bullets" in json_data:
-            return json_data
-            
-        # If that fails, try to extract bullet points manually
-        bullets = []
-        for line in response_text.split('\n'):
-            if line.strip().startswith('- '):
-                bullets.append(line.strip())
+        # Clean up the response text
+        cleaned_text = response_text.strip()
         
-        if bullets:
-            return {"bullets": bullets}
+        # Fix malformed JSON (like ]-} at the end)
+        cleaned_text = cleaned_text.replace(']-}', ']}')
+        
+        # Try to parse as JSON
+        try:
+            json_data = json.loads(cleaned_text)
+            if isinstance(json_data, dict) and "bullets" in json_data:
+                # Clean up each bullet
+                bullets = []
+                for bullet in json_data["bullets"]:
+                    # Remove extra quotes and clean up the bullet
+                    clean_bullet = bullet.strip().replace('\\"', '"').replace('"', '')
+                    if not clean_bullet.startswith('-'):
+                        clean_bullet = f"- {clean_bullet}"
+                    bullets.append(clean_bullet)
+                return {"bullets": bullets}
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON decode error: {e}")
+            logging.error(f"Attempted to parse: {cleaned_text}")
+            raise
             
         raise ValueError("No valid bullet points found in response")
         
