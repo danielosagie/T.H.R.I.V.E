@@ -738,26 +738,26 @@ def parse_bullets_response(response_text: str) -> dict:
         # Clean up the response text
         cleaned_text = response_text.strip()
         
-        # Fix malformed JSON (like ]-} at the end)
-        cleaned_text = cleaned_text.replace(']-}', ']}')
+        # Try to extract JSON using regex first
+        json_match = re.search(r'\{[\s\S]*?\}(?=\s*$)', cleaned_text)
+        if json_match:
+            try:
+                json_data = json.loads(json_match.group(0))
+                if isinstance(json_data, dict) and "bullets" in json_data:
+                    bullets = []
+                    for bullet in json_data["bullets"]:
+                        clean_bullet = bullet.strip().replace('\\"', '"').replace('"', '')
+                        if not clean_bullet.startswith('-'):
+                            clean_bullet = f"- {clean_bullet}"
+                        bullets.append(clean_bullet)
+                    return {"bullets": bullets}
+            except json.JSONDecodeError:
+                pass
         
-        # Try to parse as JSON
-        try:
-            json_data = json.loads(cleaned_text)
-            if isinstance(json_data, dict) and "bullets" in json_data:
-                # Clean up each bullet
-                bullets = []
-                for bullet in json_data["bullets"]:
-                    # Remove extra quotes and clean up the bullet
-                    clean_bullet = bullet.strip().replace('\\"', '"').replace('"', '')
-                    if not clean_bullet.startswith('-'):
-                        clean_bullet = f"- {clean_bullet}"
-                    bullets.append(clean_bullet)
-                return {"bullets": bullets}
-        except json.JSONDecodeError as e:
-            logging.error(f"JSON decode error: {e}")
-            logging.error(f"Attempted to parse: {cleaned_text}")
-            raise
+        # If JSON parsing fails, try to extract bullet points directly
+        bullet_points = re.findall(r'[-•]\s*([^\n]+)', cleaned_text)
+        if bullet_points:
+            return {"bullets": [f"- {b.strip()}" for b in bullet_points]}
             
         raise ValueError("No valid bullet points found in response")
         

@@ -1798,12 +1798,20 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
         bullets = data.bullets
       } else if (data.raw_response) {
         try {
-          // Clean up the raw response
-          const cleanJson = data.raw_response
-            .replace(/\n/g, '')
-            .replace(']-}', ']}')
-          const parsed = JSON.parse(cleanJson)
-          bullets = parsed.bullets
+          // First try to parse the entire raw_response as JSON
+          const parsed = JSON.parse(data.raw_response)
+          if (parsed.bullets) {
+            bullets = parsed.bullets
+          } else {
+            // If that fails, try to extract JSON from the text
+            const jsonMatch = data.raw_response.match(/\{[\s\S]*?\}(?=\s*$)/)?.[0]
+            if (jsonMatch) {
+              const extracted = JSON.parse(jsonMatch)
+              bullets = extracted.bullets
+            } else {
+              throw new Error('No valid JSON found in response')
+            }
+          }
         } catch (e) {
           console.error('Error parsing raw response:', e)
           throw new Error('Invalid response format from server')
