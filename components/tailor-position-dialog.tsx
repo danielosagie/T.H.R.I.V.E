@@ -35,7 +35,7 @@ export function TailorPositionDialog({ onTailor, selectedPosition, onPositionSel
     const savedPositions = localStorage.getItem('tailoredPositions')
     if (savedPositions) {
       try {
-        const parsed = JSON.parse(savedPositions)
+        const parsed = JSON.parse(savedPositions) as Position[]
         const uniquePositions = Array.from(new Map(
           parsed.map((p: Position) => [p.createdAt, p])
         ).values())

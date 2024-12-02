@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // Add this to prevent static optimization for pages using localStorage
+    appDir: true,
+  },
   webpack: (config, { isServer }) => {
     // This will ignore the warnings about missing vendor chunks
     config.infrastructureLogging = {

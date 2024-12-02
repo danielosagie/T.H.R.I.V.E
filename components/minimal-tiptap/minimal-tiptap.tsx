@@ -16,6 +16,7 @@ import { useMinimalTiptapEditor } from './hooks/use-minimal-tiptap'
 import { MeasuredContainer } from './components/measured-container'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
+import { FormControl } from '@/components/ui/form'
 
 export interface MinimalTiptapProps extends Omit<UseMinimalTiptapEditorProps, 'onUpdate'> {
   value?: Content
@@ -43,11 +44,13 @@ const Toolbar = ({ editor }: { editor: Editor }) => (
 )
 
 export interface EditorRef {
-  editor: Editor | null
+  editor: Editor;
+  container?: HTMLDivElement;
 }
 
 export const MinimalTiptapEditor = React.forwardRef<EditorRef, MinimalTiptapProps>(
   ({ value, onChange, className, editorContentClassName, ...props }, ref) => {
+    const containerRef = React.useRef<HTMLDivElement>(null);
     const editor = useMinimalTiptapEditor({
       value,
       onUpdate: onChange,
@@ -69,29 +72,31 @@ export const MinimalTiptapEditor = React.forwardRef<EditorRef, MinimalTiptapProp
       immediatelyRender: false
     })
 
-    // Expose editor instance through ref
+    // Update useImperativeHandle to include container ref
     React.useImperativeHandle(ref, () => ({
-      editor: editor
-    }))
+      editor: editor,
+      container: containerRef.current || undefined
+    }));
 
     if (!editor) {
       return null
     }
 
     return (
-      <MeasuredContainer
-        as="div"
-        name="editor"
-        ref={ref}
+      <div
+        ref={containerRef}
         className={cn(
           'flex h-auto min-h-72 w-full flex-col rounded-md border border-input shadow-sm focus-within:border-primary',
           className
         )}
       >
         <Toolbar editor={editor} />
-        <EditorContent editor={editor} className={cn('minimal-tiptap-editor', editorContentClassName)} />
+        <EditorContent 
+          editor={editor} 
+          className={cn('minimal-tiptap-editor', editorContentClassName)} 
+        />
         <LinkBubbleMenu editor={editor} />
-      </MeasuredContainer>
+      </div>
     )
   }
 )

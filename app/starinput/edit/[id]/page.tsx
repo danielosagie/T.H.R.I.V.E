@@ -1,16 +1,11 @@
 import EditStarBuilder from "@/components/edit-star-builder"
 
-export default async function EditExperiencePage({ 
-  params 
-}: { 
-  params: { id: string } 
+export default async function EditExperiencePage({
+  params,
+}: {
+  params: Promise<{ id: string }>
 }) {
-  const id = await Promise.resolve(params.id)
-  const experienceId = parseInt(id)
-
-  return (
-    <EditStarBuilder 
-      experienceId={experienceId}
-    />
-  )
+  const resolvedParams = await params
+  const experienceId = parseInt(resolvedParams.id)
+  return <EditStarBuilder experienceId={experienceId} />
 } 

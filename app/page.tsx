@@ -78,7 +78,7 @@ const HomePage = () => {
                     src={MILSPOUSE_IMAGE} 
                     alt="MILSPOUSE" 
                     fill
-                    className="object-cover rounded-2xl hover:scale-105 transition-transform duration-300"
+                    className="object-scale-down rounded-2xl hover:scale-105 transition-transform duration-300"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw"
                   />
                 </div>
