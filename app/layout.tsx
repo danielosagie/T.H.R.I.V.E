@@ -9,9 +9,40 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import StyledComponentsRegistry from '@/lib/registry'
 
 export const metadata: Metadata = {
-  title: 'THRIVE Toolkit',
+  title: 'T.H.R.I.V.E Toolkit — Your Living Employment Training Platform',
+  description: 'THRIVE Toolkit is a comprehensive platform designed to empower individuals in their career development journey. Our tools help users create personalized experience cards, track their progress, and make informed decisions about their professional growth.',
+  metadataBase: new URL('https://tcard.vercel.app'), // Replace with your actual domain
+  openGraph: {
+    type: 'website',
+    title: 'T.H.R.I.V.E Toolkit — Your Living Employment Training Platform',
+    description: 'THRIVE Toolkit is a comprehensive platform designed to empower individuals in their career development journey. Our tools help users create personalized experience cards, track their progress, and make informed decisions about their professional growth.',
+    url: 'https://tcard.vercel.app', // Replace with your actual domain
+    siteName: 'T.H.R.I.V.E Toolkit',
+    images: [
+      {
+        url: 'https://utfs.io/f/azdjmzDIYeboFIBF8JjnpiRV3etQA2DrCXGkUnaTSIWPvu5K', // Replace with your UploadThing image URL
+        width: 1200,
+        height: 630,
+        alt: 'T.H.R.I.V.E Toolkit Preview',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'T.H.R.I.V.E Toolkit — Your Living Employment Training Platform',
+    description: 'THRIVE Toolkit is a comprehensive platform designed to empower individuals in their career development journey. Our tools help users create personalized experience cards, track their progress, and make informed decisions about their professional growth.',
+    images: ['https://utfs.io/f/azdjmzDIYeboFIBF8JjnpiRV3etQA2DrCXGkUnaTSIWPvu5K'], // Replace with your UploadThing image URL
+    creator: '@yourtwitterhandle', // Optional: Replace with your Twitter handle
+  },
   icons: {
     icon: '/favicon.ico',
+    shortcut: '/favicon-16x16.png',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/site.webmanifest',
+  robots: {
+    index: true,
+    follow: true,
   },
 }
 
