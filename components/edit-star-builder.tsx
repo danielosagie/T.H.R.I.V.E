@@ -2008,7 +2008,7 @@ const EditStarBuilder = ({ experienceId }: EditStarBuilderProps) => {
             {bulletVersions?.map((version, index) => (
               <div key={`version-${version.id}-${index}`} className="border rounded-lg p-4 mb-4">
                 <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col space-y-3 items-start">
                     <span className="font-medium">Version {bulletVersions.length - index}</span>
                     <span 
                       className={cn(
