@@ -1351,15 +1351,7 @@ const StarBuilder: React.FC = () => {
               </div>
 
               <div className="flex justify-between items-center pt-4">
-                <Button 
-                  variant="outline"
-              onClick={handleSimulateData}
-              className="flex items-center gap-2"
-              disabled={state.isGenerating}
-            >
-              <Sparkles className="h-4 w-4" />
-              Load Test Data
-            </Button>
+                
             <Button 
               onClick={handleRegenerateRecommendations} 
               className="flex items-center gap-2"
@@ -1459,14 +1451,7 @@ const StarBuilder: React.FC = () => {
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Regenerate Bullets
               </Button>
-              <Button 
-                  variant="outline" 
-                  onClick={handleSimulateData}
-                  className="flex items-center gap-2"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Load Test Data
-                </Button>
+              
             </div>
           </div>
         )}
